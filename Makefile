@@ -2,6 +2,12 @@
 # Go Aggregator Service Makefile
 # ==============================
 
+# Автоматическая загрузка переменных окружения из .env
+ifneq (,$(wildcard .env))
+	include .env
+	export
+endif
+
 BINARY := aggregator
 CMD := ./app/src/cmd/start
 BIN_DIR := ./bin
