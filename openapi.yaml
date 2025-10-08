@@ -1,0 +1,97 @@
+openapi: 3.0.3
+info:
+  title: Aggregator REST API
+  version: 1.0.0
+  description: REST interface for accessing aggregated measurement statistics.
+servers:
+  - url: http://localhost:8080
+paths:
+  /max:
+    get:
+      summary: Retrieve packet maxima.
+      description: >-
+        Returns stored maxima for packets that match the provided filters. Exactly one of the following must be provided:
+        `packet_id`, or both `from` and `to`.
+      parameters:
+        - in: query
+          name: packet_id
+          schema:
+            type: string
+            format: uuid
+          description: Identifier of the packet to query.
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date-time
+          description: Start of the time interval (inclusive).
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date-time
+          description: End of the time interval (inclusive).
+      responses:
+        '200':
+          description: Maximum measurement found.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/MaxResponse'
+                  - $ref: '#/components/schemas/MaxResponseList'
+        '400':
+          description: Invalid request parameters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Measurement not found for the given filters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    MaxResponse:
+      type: object
+      properties:
+        packet_id:
+          type: string
+          format: uuid
+        source_id:
+          type: string
+          format: uuid
+        value:
+          type: number
+          format: double
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - packet_id
+        - source_id
+        - value
+        - timestamp
+    MaxResponseList:
+      type: array
+      items:
+        $ref: '#/components/schemas/MaxResponse'
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: integer
+          format: int32
+      required:
+        - error
+        - code

@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aggregator
+      POSTGRES_PASSWORD: aggregator
+      POSTGRES_DB: aggregator
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aggregator -d aggregator"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  aggregator:
+    build: .
+    container_name: aggregator
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_DSN: postgres://aggregator:aggregator@postgres:5432/aggregator?sslmode=disable
+      HTTP_PORT: "8080"
+      GRPC_PORT: "50051"
+      METRICS_PORT: "2112"
+      N: "1000"
+      K: "10"
+      M: "4"
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+      - "2112:2112"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./app/resources/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      aggregator:
+        condition: service_started
+      node-exporter:
+        condition: service_started
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./app/resources/grafana/provisioning:/etc/grafana/provisioning
+      - ./app/resources/grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    depends_on:
+      prometheus:
+        condition: service_started
+
+volumes:
+  postgres_data:
+    driver: local

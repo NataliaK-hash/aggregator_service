@@ -1,0 +1,41 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: aggregator
+      POSTGRES_PASSWORD: aggregator
+      POSTGRES_DB: aggregator
+    ports:
+      - "5432:5432"
+    networks:
+      - monitor
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./app/resources/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    volumes:
+      - ./app/resources/grafana/provisioning:/etc/grafana/provisioning
+      - ./app/resources/grafana/dashboards:/var/lib/grafana/dashboards
+
+networks:
+  monitor:
+    driver: bridge

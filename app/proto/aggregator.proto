@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package aggregator;
+
+option go_package = "aggregator-service/app/src/api/grpc/pb;grpcpb";
+
+import "google/protobuf/timestamp.proto";
+
+service AggregatorService {
+  rpc GetMaxByID(GetByIDRequest) returns (GetByIDResponse);
+  rpc GetMaxByTimeRange(GetByTimeRangeRequest) returns (GetByTimeRangeResponse);
+}
+
+message GetByIDRequest {
+  string id = 1;
+}
+
+message GetByIDResponse {
+  string id = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  double max_value = 3;
+}
+
+message GetByTimeRangeRequest {
+  google.protobuf.Timestamp from = 1;
+  google.protobuf.Timestamp to = 2;
+}
+
+message GetByTimeRangeResponse {
+  repeated GetByIDResponse results = 1;
+}
