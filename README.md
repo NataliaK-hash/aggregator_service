@@ -2,6 +2,30 @@
 
 Сервис агрегирует измерения из пакетов, используя генератор и пул воркеров.
 
+# Kокальный запуск
+1) Скопировать окружение 
+cp .env.example .env
+В .env задаются параметры подключения к БД, порты и настройки метрик.
+
+2) Запустить весь стек
+make run-full
+Эта команда:
+- собирает зависимости (go mod tidy, make build);
+- поднимает инфраструктуру (Postgres, Prometheus, Grafana);
+- применяет миграции;
+- запускает сервис на localhost:8080.
+
+3) Проверить, что всё работает: 
+Компонент	            URL	                                 Описание
+- HTTP API	          http://localhost:8080/healthz            проверка состояния сервиса
+- Метрики	          http://localhost:2112/metrics            Prometheus metrics endpoint
+- Grafana	          http://localhost:3000                    (admin / admin)	дашборды и визуализация
+- Prometheus	       http://localhost:9090                    метрики и таргеты
+
+4) Если нужно перезапустить всё с нуля
+docker compose -f docker-compose-test.yml down -v
+make run-full
+
 ## Мониторинг
 
 Для локального запуска системы мониторинга используйте docker-compose:
