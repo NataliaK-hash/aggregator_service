@@ -12,6 +12,7 @@ import (
 	"aggregator/internal/logging"
 )
 
+// TestShutdownContextCancelledOnSignal проверяет отмену контекста при получении сигнала.
 func TestShutdownContextCancelledOnSignal(t *testing.T) {
 	signalCh := make(chan os.Signal, 1)
 	logger, _ := logging.New("debug", logging.WithWriter(io.Discard))
@@ -29,6 +30,7 @@ func TestShutdownContextCancelledOnSignal(t *testing.T) {
 	}
 }
 
+// TestCleanupContextTimeout убеждается, что контекст очистки использует заданный таймаут.
 func TestCleanupContextTimeout(t *testing.T) {
 	logger, _ := logging.New("debug", logging.WithWriter(io.Discard))
 	manager := app.NewShutdownManager(25*time.Millisecond, logger, app.WithSignalChannel(make(chan os.Signal)))

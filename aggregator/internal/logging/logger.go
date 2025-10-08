@@ -9,22 +9,26 @@ import (
 	"strings"
 )
 
+// Logger представляет обёртку над slog.Logger с удобными помощниками для структурированного логирования и трассировки.
 type Logger struct {
 	logger *slog.Logger
 }
 
+// Option описывает параметр конфигурации логгера.
 type Option func(*options)
 
 type options struct {
 	writer io.Writer
 }
 
+// WithWriter позволяет задать пользовательский io.Writer для вывода логов.
 func WithWriter(w io.Writer) Option {
 	return func(o *options) {
 		o.writer = w
 	}
 }
 
+// New создаёт новый структурированный JSON-логгер с указанным уровнем логирования.
 func New(level string, opts ...Option) (*Logger, error) {
 	cfg := options{}
 	for _, opt := range opts {
@@ -42,6 +46,7 @@ func New(level string, opts ...Option) (*Logger, error) {
 	return &Logger{logger: slog.New(handler)}, nil
 }
 
+// parseLevel преобразует строковое представление уровня логирования в slog.Level.
 func parseLevel(level string) slog.Leveler {
 	switch strings.ToLower(level) {
 	case "debug":
@@ -57,6 +62,7 @@ func parseLevel(level string) slog.Leveler {
 	}
 }
 
+// WithTraceID возвращает логгер с добавленным указанным идентификатором трассы.
 func (l *Logger) WithTraceID(traceID string) *Logger {
 	if l == nil {
 		return nil
@@ -64,6 +70,7 @@ func (l *Logger) WithTraceID(traceID string) *Logger {
 	return &Logger{logger: l.logger.With("traceId", traceID)}
 }
 
+// WithContext прикрепляет логгер к переданному контексту.
 func (l *Logger) WithContext(ctx context.Context) context.Context {
 	if l == nil {
 		return ctx
@@ -71,6 +78,7 @@ func (l *Logger) WithContext(ctx context.Context) context.Context {
 	return context.WithValue(ctx, ctxLoggerKey{}, l)
 }
 
+// FromContext извлекает логгер из контекста, если он туда был помещён.
 func FromContext(ctx context.Context) (*Logger, bool) {
 	if ctx == nil {
 		return nil, false
@@ -81,22 +89,27 @@ func FromContext(ctx context.Context) (*Logger, bool) {
 
 type ctxLoggerKey struct{}
 
+// Debug записывает сообщение уровня debug.
 func (l *Logger) Debug(msg string, args ...any) {
 	l.log(slog.LevelDebug, msg, args...)
 }
 
+// Info записывает сообщение уровня info.
 func (l *Logger) Info(msg string, args ...any) {
 	l.log(slog.LevelInfo, msg, args...)
 }
 
+// Warn записывает сообщение уровня warn.
 func (l *Logger) Warn(msg string, args ...any) {
 	l.log(slog.LevelWarn, msg, args...)
 }
 
+// Error записывает сообщение уровня error.
 func (l *Logger) Error(msg string, args ...any) {
 	l.log(slog.LevelError, msg, args...)
 }
 
+// log выполняет фактическую отправку сообщения в базовый slog.Logger.
 func (l *Logger) log(level slog.Level, msg string, args ...any) {
 	if l == nil || l.logger == nil {
 		return
@@ -104,6 +117,7 @@ func (l *Logger) log(level slog.Level, msg string, args ...any) {
 	l.logger.Log(context.Background(), level, msg, args...)
 }
 
+// ErrorWithTrace записывает сообщение об ошибке с передачей идентификатора трассы и деталей ошибки.
 func (l *Logger) ErrorWithTrace(traceID string, err error) {
 	if l == nil {
 		return
@@ -115,6 +129,7 @@ func (l *Logger) ErrorWithTrace(traceID string, err error) {
 	l.Error("operation failed", attrs...)
 }
 
+// SetDefault заменяет пакетный логгер по умолчанию в slog на текущий экземпляр.
 func (l *Logger) SetDefault() {
 	if l == nil || l.logger == nil {
 		return
@@ -122,6 +137,7 @@ func (l *Logger) SetDefault() {
 	slog.SetDefault(l.logger)
 }
 
+// MustNew создаёт новый логгер либо паникует при ошибке конфигурации.
 func MustNew(level string, opts ...Option) *Logger {
 	logger, err := New(level, opts...)
 	if err != nil {
@@ -130,6 +146,7 @@ func MustNew(level string, opts ...Option) *Logger {
 	return logger
 }
 
+// AttachError дополняет список аргументов данными об ошибке.
 func AttachError(err error, args ...any) []any {
 	if err == nil {
 		return args
@@ -137,6 +154,7 @@ func AttachError(err error, args ...any) []any {
 	return append(args, "error", err.Error())
 }
 
+// Validate проверяет корректность настроек логгера.
 func (l *Logger) Validate() error {
 	if l == nil || l.logger == nil {
 		return errors.New("logger is not initialized")

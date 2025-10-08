@@ -10,21 +10,25 @@ import (
 	"aggregator/internal/domain"
 )
 
+// Source представляет интерфейс производителя пакетов данных.
 type Source interface {
 	Start(ctx context.Context) <-chan domain.DataPacket
 }
 
+// Config описывает параметры генератора случайных пакетов.
 type Config struct {
 	PayloadLen int
 	Interval   time.Duration
 	BufferSize int
 }
 
+// RandomSource производит случайные пакеты данных с заданным интервалом.
 type RandomSource struct {
 	cfg Config
 	rnd *rand.Rand
 }
 
+// NewRandomSource создаёт генератор случайных пакетов с учётом нормализации конфигурации.
 func NewRandomSource(cfg Config) Source {
 	normalized := normalizeConfig(cfg)
 
@@ -34,6 +38,7 @@ func NewRandomSource(cfg Config) Source {
 	}
 }
 
+// Start запускает асинхронную генерацию случайных пакетов до отмены контекста.
 func (s *RandomSource) Start(ctx context.Context) <-chan domain.DataPacket {
 	out := make(chan domain.DataPacket, s.cfg.BufferSize)
 

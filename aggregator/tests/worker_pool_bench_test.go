@@ -11,6 +11,7 @@ import (
 	"aggregator/internal/domain"
 )
 
+// BenchmarkWorkerPoolThroughput измеряет производительность пула воркеров при интенсивном потоке пакетов.
 func BenchmarkWorkerPoolThroughput(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

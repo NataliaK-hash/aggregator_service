@@ -6,8 +6,10 @@ import (
 	"fmt"
 )
 
+// UUID represents a 128-bit universally unique identifier.
 type UUID [16]byte
 
+// New returns a version 4 UUID generated from secure random numbers.
 func New() UUID {
 	var u UUID
 	if _, err := rand.Read(u[:]); err != nil {
@@ -20,6 +22,7 @@ func New() UUID {
 	return u
 }
 
+// String returns the canonical string representation of the UUID.
 func (u UUID) String() string {
 	var buf [36]byte
 
@@ -34,4 +37,9 @@ func (u UUID) String() string {
 	hex.Encode(buf[24:36], u[10:16])
 
 	return string(buf[:])
+}
+
+// NewString возвращает строковое представление нового UUID.
+func NewString() string {
+	return New().String()
 }

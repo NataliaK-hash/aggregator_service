@@ -10,6 +10,7 @@ import (
 	"aggregator/internal/storage"
 )
 
+// App представляет приложение агрегатора.
 type App struct {
 	config          *config.Config
 	logger          *logging.Logger
@@ -18,10 +19,12 @@ type App struct {
 	workerPool      *WorkerPool
 }
 
-func New(cfg *config.Config, logger *logging.Logger, shutdownManager *ShutdownManager, source generator.Source, workerPool *WorkerPool) *App {
-	return &App{config: cfg, logger: logger, shutdownManager: shutdownManager, source: source, workerPool: workerPool}
+// New создаёт новый экземпляр App.
+func New(cfg *config.Config, logger *logging.Logger, shutdownManager *ShutdownManager, source generator.Source, workerPool *WorkerPool, repository storage.Repository) *App {
+	return &App{config: cfg, logger: logger, shutdownManager: shutdownManager, source: source, workerPool: workerPool, repository: repository}
 }
 
+// Run запускает жизненный цикл приложения.
 func (a *App) Run(ctx context.Context) error {
 	if a.logger != nil {
 		a.logger.Info("starting aggregator service",
@@ -84,7 +87,8 @@ func (a *App) Run(ctx context.Context) error {
 	return nil
 }
 
-func (a *App) consumeResults() <-chan struct{} {
+// consumeResults запускает обработчик результатов, записывающий информацию о максимумах пакетов в лог.
+func (a *App) consumeResults(ctx context.Context) <-chan struct{} {
 	done := make(chan struct{})
 
 	go func() {
