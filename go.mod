@@ -1,4 +1,4 @@
-module aggregator
+module aggregator-service-project
 
 go 1.21
 
