@@ -1,0 +1,41 @@
+{
+  "id": null,
+  "uid": "aggregator",
+  "title": "Aggregator Metrics",
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "version": 1,
+  "refresh": "5s",
+  "panels": [
+    {
+      "type": "graph",
+      "title": "DB Batch Size",
+      "targets": [
+        {
+          "expr": "aggregator_db_batch_size",
+          "legendFormat": "Batch Size"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "DB Batch Wait Seconds",
+      "targets": [
+        {
+          "expr": "aggregator_db_batch_wait_seconds_bucket",
+          "legendFormat": "Wait Time"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "DB Batch Duration",
+      "targets": [
+        {
+          "expr": "rate(aggregator_db_batch_duration_seconds_sum[1m])",
+          "legendFormat": "Duration"
+        }
+      ]
+    }
+  ]
+}

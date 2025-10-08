@@ -17,38 +17,50 @@ services:
       retries: 5
       start_period: 10s
 
-  aggregator-service:
-    container_name: aggregator-service
+  aggregator:
     build: .
+    container_name: aggregator
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       DB_DSN: postgres://aggregator:aggregator@postgres:5432/aggregator?sslmode=disable
       HTTP_PORT: "8080"
       GRPC_PORT: "50051"
-      N: "1000"   # интервал генерации пакета в миллисекундах (1 секунда)
-      K: "10"     # количество случайных чисел в пакете
-      M: "4"      # количество воркеров для обработки
+      METRICS_PORT: "2112"
+      N: "1000"
+      K: "10"
+      M: "4"
     ports:
       - "8080:8080"
       - "50051:50051"
-      - "2112:2112"   # 👈 Добавлено: метрики наружу
+      - "2112:2112"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
       interval: 10s
       timeout: 5s
       retries: 3
 
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     restart: unless-stopped
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./app/resources/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "9090:9090"
     depends_on:
-      - aggregator-service
+      aggregator:
+        condition: service_started
+      node-exporter:
+        condition: service_started
 
   grafana:
     image: grafana/grafana:latest
@@ -57,10 +69,13 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./app/resources/grafana:/etc/grafana/provisioning
     ports:
       - "3000:3000"
     depends_on:
-      - prometheus
+      prometheus:
+        condition: service_started
 
 volumes:
   postgres_data:

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"aggregator-service/app/src/domain"
+	"aggregator-service/app/src/infra"
 	"aggregator-service/app/src/shared/constants"
 )
 
@@ -74,6 +75,7 @@ func (g *Generator) Run(ctx context.Context, out chan<- domain.DataPacket) {
 		}
 
 		g.log(ctx, "generator: produced packet id=%s", packetID)
+		infra.IncGeneratorPackets()
 
 		packet := domain.DataPacket{ID: packetID, Measurements: measurements}
 

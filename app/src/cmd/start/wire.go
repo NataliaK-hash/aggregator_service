@@ -29,4 +29,3 @@ func initApplication(ctx context.Context, out io.Writer) (*application, func(), 
 	)
 	return nil, nil, nil
 }
-
