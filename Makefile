@@ -1,28 +1,70 @@
-BINARY := aggregator
-CMD := ./cmd/aggregator
-BIN_DIR := ./bin
-MIGRATIONS_DIR := ./internal/storage/postgres/migrations
+# ==============================
+# Go Aggregator Service Makefile
+# ==============================
 
-.PHONY: all build run test lint clean migrate
+BINARY := aggregator
+CMD := ./app/src/cmd/start
+BIN_DIR := ./bin
+MIGRATIONS_DIR ?= ./app/resources/db/migrations
+
+.PHONY: all build run test test-integration clean migrate test-flow deps
 
 all: build test
 
+# -------------------------------
+# Build binary
+# -------------------------------
 build:
-	@echo "Building $(BINARY)..."
+	@echo "Building aggregator..."
 	go build -o $(BIN_DIR)/$(BINARY) $(CMD)
 
-run:
+# -------------------------------
+# Run tests
+# -------------------------------
+test-unit:
+	@echo "Running unit tests..."
+	go test ./app/tests/unit/...
+
+# -------------------------------
+# Run application
+# -------------------------------
+run: migrate
 	@echo "Running $(BINARY)..."
 	go run $(CMD)
 
-test:
-	@echo "Running tests..."
-	go test ./...
+# -------------------------------
+# Integration tests
+# -------------------------------
+test-integration:
+	@echo Running integration tests...
+	@docker info >nul 2>&1 || (echo Docker not available, skipping tests. && exit 0)
+	@go test ./app/tests/integration/...
 
+# -------------------------------
+# Clean build artifacts
+# -------------------------------
 clean:
 	@echo "Cleaning..."
-	- rm -rf $(BIN_DIR)
+	@if [ -d $(BIN_DIR) ]; then rm -rf $(BIN_DIR); fi
 
+# -------------------------------
+# Run database migrations
+# -------------------------------
 migrate:
 	@echo "Running migrations..."
-	# команды миграций, если нужны
+	go run ./app/src/cmd/migrate/main.go --dir $(MIGRATIONS_DIR)
+
+# -------------------------------
+# Refresh dependencies
+# -------------------------------
+deps:
+	@echo "Syncing dependencies..."
+	go mod tidy
+	go mod download all
+
+# ------------------------------------------------------------------------------
+# Manual E2E test (runs only when triggered manually)
+# ------------------------------------------------------------------------------
+test-flow:
+	@echo 🚀 Running full E2E flow...
+	set RUN_E2E=1 && set E2E_FORCE=1 && set E2E_OUTPUT=pretty && go test -v -count=1 ./app/tests/e2e -run ^TestE2E$
