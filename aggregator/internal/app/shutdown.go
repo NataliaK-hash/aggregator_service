@@ -11,7 +11,6 @@ import (
 	"aggregator/internal/logging"
 )
 
-// ShutdownManager координирует логику корректного завершения работы приложения.
 type ShutdownManager struct {
 	timeout time.Duration
 	logger  *logging.Logger
@@ -20,17 +19,14 @@ type ShutdownManager struct {
 	cleanup func()
 }
 
-// ShutdownOption настраивает ShutdownManager.
 type ShutdownOption func(*ShutdownManager)
 
-// WithSignalChannel позволяет передать пользовательский канал для получения сигналов завершения.
 func WithSignalChannel(ch <-chan os.Signal) ShutdownOption {
 	return func(sm *ShutdownManager) {
 		sm.signals = ch
 	}
 }
 
-// NewShutdownManager создаёт ShutdownManager с заданным таймаутом.
 func NewShutdownManager(timeout time.Duration, logger *logging.Logger, opts ...ShutdownOption) *ShutdownManager {
 	if timeout <= 0 {
 		timeout = 5 * time.Second
@@ -55,7 +51,6 @@ func NewShutdownManager(timeout time.Duration, logger *logging.Logger, opts ...S
 	return sm
 }
 
-// WithContext возвращает контекст, который отменяется при завершении родительского контекста или получении сигнала остановки.
 func (sm *ShutdownManager) WithContext(parent context.Context) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(parent)
 
@@ -74,12 +69,10 @@ func (sm *ShutdownManager) WithContext(parent context.Context) (context.Context,
 	return ctx, cancel
 }
 
-// CleanupContext предоставляет контекст с настроенным таймаутом для завершения процедур остановки.
 func (sm *ShutdownManager) CleanupContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), sm.timeout)
 }
 
-// Close освобождает ресурсы, связанные с ShutdownManager.
 func (sm *ShutdownManager) Close() {
 	sm.once.Do(func() {
 		if sm.cleanup != nil {
