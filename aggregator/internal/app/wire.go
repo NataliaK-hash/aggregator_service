@@ -9,6 +9,7 @@ import (
 	"github.com/google/wire"
 
 	"aggregator/internal/config"
+	"aggregator/internal/generator"
 	"aggregator/internal/logging"
 )
 
@@ -16,6 +17,8 @@ func InitializeApp() (*App, error) {
 	panic(wire.Build(
 		provideConfig,
 		provideLogger,
+		provideGeneratorConfig,
+		generator.ProviderSet,
 		provideShutdownManager,
 		New,
 	))

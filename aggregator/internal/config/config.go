@@ -4,30 +4,33 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 )
 
-// Config содержит параметры конфигурации приложения, загружаемые из переменных окружения.
-type Config struct {
-	GeneratorPeriodMs    int
-	GeneratorPayloadSize int
-	WorkerPoolSize       int
-	DbDriver             string
-	DbDsn                string
-	HttpPort             int
-	GrpcPort             int
-	LogLevel             string
+type Generator struct {
+	PayloadLen int
+	Interval   time.Duration
 }
 
-// Load считывает значения конфигурации из переменных окружения и подставляет значения по умолчанию при их отсутствии.
+type Config struct {
+	Generator      Generator
+	WorkerPoolSize int
+	DbDriver       string
+	DbDsn          string
+	HttpPort       int
+	GrpcPort       int
+	LogLevel       string
+}
+
 func Load() (*Config, error) {
-	generatorPeriod, err := getEnvInt(EnvGeneratorPeriodMs, DefaultGeneratorPeriodMs)
+	payloadLen, err := getEnvInt(EnvGeneratorPayloadLen, DefaultGeneratorPayloadLen)
 	if err != nil {
-		return nil, fmt.Errorf("invalid %s: %w", EnvGeneratorPeriodMs, err)
+		return nil, fmt.Errorf("invalid %s: %w", EnvGeneratorPayloadLen, err)
 	}
 
-	payloadSize, err := getEnvInt(EnvGeneratorPayloadSize, DefaultGeneratorPayloadSize)
+	interval, err := getEnvDuration(EnvGeneratorInterval, DefaultGeneratorInterval)
 	if err != nil {
-		return nil, fmt.Errorf("invalid %s: %w", EnvGeneratorPayloadSize, err)
+		return nil, fmt.Errorf("invalid %s: %w", EnvGeneratorInterval, err)
 	}
 
 	workerPoolSize, err := getEnvInt(EnvWorkerPoolSize, DefaultWorkerPoolSize)
@@ -46,20 +49,21 @@ func Load() (*Config, error) {
 	}
 
 	cfg := &Config{
-		GeneratorPeriodMs:    generatorPeriod,
-		GeneratorPayloadSize: payloadSize,
-		WorkerPoolSize:       workerPoolSize,
-		DbDriver:             getEnvString(EnvDbDriver, DefaultDbDriver),
-		DbDsn:                getEnvString(EnvDbDsn, DefaultDbDsn),
-		HttpPort:             httpPort,
-		GrpcPort:             grpcPort,
-		LogLevel:             normalizeLogLevel(getEnvString(EnvLogLevel, DefaultLogLevel)),
+		Generator: Generator{
+			PayloadLen: payloadLen,
+			Interval:   interval,
+		},
+		WorkerPoolSize: workerPoolSize,
+		DbDriver:       getEnvString(EnvDbDriver, DefaultDbDriver),
+		DbDsn:          getEnvString(EnvDbDsn, DefaultDbDsn),
+		HttpPort:       httpPort,
+		GrpcPort:       grpcPort,
+		LogLevel:       normalizeLogLevel(getEnvString(EnvLogLevel, DefaultLogLevel)),
 	}
 
 	return cfg, nil
 }
 
-// getEnvString возвращает строковое значение переменной окружения или значение по умолчанию.
 func getEnvString(key, defaultValue string) string {
 	value := os.Getenv(key)
 	if value == "" {
@@ -68,7 +72,6 @@ func getEnvString(key, defaultValue string) string {
 	return value
 }
 
-// getEnvInt возвращает целочисленное значение переменной окружения или значение по умолчанию.
 func getEnvInt(key string, defaultValue int) (int, error) {
 	value := os.Getenv(key)
 	if value == "" {
@@ -83,7 +86,20 @@ func getEnvInt(key string, defaultValue int) (int, error) {
 	return parsed, nil
 }
 
-// normalizeLogLevel приводит текстовый уровень логирования к поддерживаемому значению.
+func getEnvDuration(key string, defaultValue time.Duration) (time.Duration, error) {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue, nil
+	}
+
+	parsed, err := time.ParseDuration(value)
+	if err != nil {
+		return 0, err
+	}
+
+	return parsed, nil
+}
+
 func normalizeLogLevel(level string) string {
 	switch level {
 	case "debug", "info", "warn", "error":

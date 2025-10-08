@@ -5,22 +5,21 @@ import (
 	"errors"
 
 	"aggregator/internal/config"
+	"aggregator/internal/generator"
 	"aggregator/internal/logging"
 )
 
-// App представляет приложение агрегатора.
 type App struct {
 	config          *config.Config
 	logger          *logging.Logger
 	shutdownManager *ShutdownManager
+	source          generator.Source
 }
 
-// New создаёт новый экземпляр App.
-func New(cfg *config.Config, logger *logging.Logger, shutdownManager *ShutdownManager) *App {
-	return &App{config: cfg, logger: logger, shutdownManager: shutdownManager}
+func New(cfg *config.Config, logger *logging.Logger, shutdownManager *ShutdownManager, source generator.Source) *App {
+	return &App{config: cfg, logger: logger, shutdownManager: shutdownManager, source: source}
 }
 
-// Run запускает жизненный цикл приложения.
 func (a *App) Run(ctx context.Context) error {
 	if a.logger != nil {
 		a.logger.Info("starting aggregator service",
