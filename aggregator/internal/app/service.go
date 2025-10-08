@@ -5,22 +5,22 @@ import (
 	"errors"
 
 	"aggregator/internal/config"
+	"aggregator/internal/generator"
 	"aggregator/internal/logging"
 )
 
-// App представляет приложение агрегатора.
 type App struct {
 	config          *config.Config
 	logger          *logging.Logger
 	shutdownManager *ShutdownManager
+	source          generator.Source
+	workerPool      *WorkerPool
 }
 
-// New создаёт новый экземпляр App.
-func New(cfg *config.Config, logger *logging.Logger, shutdownManager *ShutdownManager) *App {
-	return &App{config: cfg, logger: logger, shutdownManager: shutdownManager}
+func New(cfg *config.Config, logger *logging.Logger, shutdownManager *ShutdownManager, source generator.Source, workerPool *WorkerPool) *App {
+	return &App{config: cfg, logger: logger, shutdownManager: shutdownManager, source: source, workerPool: workerPool}
 }
 
-// Run запускает жизненный цикл приложения.
 func (a *App) Run(ctx context.Context) error {
 	if a.logger != nil {
 		a.logger.Info("starting aggregator service",
@@ -34,6 +34,17 @@ func (a *App) Run(ctx context.Context) error {
 	defer cancel()
 	defer a.shutdownManager.Close()
 
+	var (
+		resultsDone       <-chan struct{}
+		processingStarted bool
+	)
+	if a.source != nil && a.workerPool != nil {
+		packets := a.source.Start(runCtx)
+		a.workerPool.Start(runCtx, packets)
+		resultsDone = a.consumeResults()
+		processingStarted = true
+	}
+
 	<-runCtx.Done()
 
 	if a.logger != nil {
@@ -43,15 +54,47 @@ func (a *App) Run(ctx context.Context) error {
 	cleanupCtx, cleanupCancel := a.shutdownManager.CleanupContext()
 	defer cleanupCancel()
 
-	<-cleanupCtx.Done()
+	var shutdownErr error
+	if processingStarted {
+		if err := a.workerPool.Shutdown(cleanupCtx); err != nil {
+			shutdownErr = err
+		}
+	}
+
+	if processingStarted && resultsDone != nil {
+		if err := a.shutdownManager.WaitFor(cleanupCtx, resultsDone); err != nil {
+			if shutdownErr == nil {
+				shutdownErr = err
+			}
+		}
+	}
 
 	if a.logger != nil {
-		if errors.Is(cleanupCtx.Err(), context.DeadlineExceeded) {
+		switch {
+		case errors.Is(shutdownErr, context.DeadlineExceeded):
 			a.logger.Warn("shutdown deadline exceeded", "timeout", a.shutdownManager.timeout.String())
-		} else {
+		case shutdownErr != nil:
+			a.logger.Error("shutdown completed with error", "error", shutdownErr.Error())
+		default:
 			a.logger.Info("shutdown completed")
 		}
 	}
 
 	return nil
+}
+
+func (a *App) consumeResults() <-chan struct{} {
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		for result := range a.workerPool.Results() {
+			if a.logger != nil {
+				a.logger.Debug("packet processed", "packetId", result.ID, "maxValue", result.MaxValue)
+			}
+		}
+	}()
+
+	return done
 }

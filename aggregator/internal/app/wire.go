@@ -9,6 +9,7 @@ import (
 	"github.com/google/wire"
 
 	"aggregator/internal/config"
+	"aggregator/internal/generator"
 	"aggregator/internal/logging"
 )
 
@@ -16,6 +17,9 @@ func InitializeApp() (*App, error) {
 	panic(wire.Build(
 		provideConfig,
 		provideLogger,
+		provideGeneratorConfig,
+		generator.ProviderSet,
+		provideWorkerPool,
 		provideShutdownManager,
 		New,
 	))
@@ -30,4 +34,8 @@ func provideLogger(cfg *config.Config) (*logging.Logger, error) {
 func provideShutdownManager(l *logging.Logger) *ShutdownManager {
 	const shutdownTimeout = 30 * time.Second
 	return NewShutdownManager(shutdownTimeout, l)
+}
+
+func provideWorkerPool(cfg *config.Config) *WorkerPool {
+	return NewWorkerPool(cfg.WorkerPoolSize)
 }
