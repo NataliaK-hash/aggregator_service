@@ -7,11 +7,13 @@ import (
 	"time"
 )
 
+// Generator contains configuration for the data packet generator.
 type Generator struct {
 	PayloadLen int
 	Interval   time.Duration
 }
 
+// Config содержит параметры конфигурации приложения, загружаемые из переменных окружения.
 type Config struct {
 	Generator      Generator
 	WorkerPoolSize int
@@ -22,6 +24,7 @@ type Config struct {
 	LogLevel       string
 }
 
+// Load считывает значения конфигурации из переменных окружения и подставляет значения по умолчанию при их отсутствии.
 func Load() (*Config, error) {
 	payloadLen, err := getEnvInt(EnvGeneratorPayloadLen, DefaultGeneratorPayloadLen)
 	if err != nil {
@@ -64,6 +67,7 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
+// getEnvString возвращает строковое значение переменной окружения или значение по умолчанию.
 func getEnvString(key, defaultValue string) string {
 	value := os.Getenv(key)
 	if value == "" {
@@ -72,6 +76,7 @@ func getEnvString(key, defaultValue string) string {
 	return value
 }
 
+// getEnvInt возвращает целочисленное значение переменной окружения или значение по умолчанию.
 func getEnvInt(key string, defaultValue int) (int, error) {
 	value := os.Getenv(key)
 	if value == "" {
@@ -100,6 +105,7 @@ func getEnvDuration(key string, defaultValue time.Duration) (time.Duration, erro
 	return parsed, nil
 }
 
+// normalizeLogLevel приводит текстовый уровень логирования к поддерживаемому значению.
 func normalizeLogLevel(level string) string {
 	switch level {
 	case "debug", "info", "warn", "error":

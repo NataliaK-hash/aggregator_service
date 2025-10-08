@@ -18,6 +18,7 @@ import (
 	"aggregator/internal/storage/postgres"
 )
 
+// TestPostgresRepositoryIntegration проверяет корректность базовых операций на реальной базе PostgreSQL.
 func TestPostgresRepositoryIntegration(t *testing.T) {
 	ctx := context.Background()
 

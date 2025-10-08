@@ -15,8 +15,10 @@ import (
 	rd "aggregator/internal/storage/redis"
 )
 
+// ProviderSet содержит провайдеры хранилищ для wire.
 var ProviderSet = wire.NewSet(ProvideRepository)
 
+// ProvideRepository выбирает реализацию репозитория на основании конфигурации.
 func ProvideRepository(cfg *config.Config, logger *logging.Logger) (Repository, error) {
 	switch cfg.DbDriver {
 	case "postgres", "pgx":

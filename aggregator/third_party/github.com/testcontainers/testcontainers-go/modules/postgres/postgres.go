@@ -10,6 +10,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 )
 
+// Option представляет опцию настройки контейнера PostgreSQL.
 type Option func(*config)
 
 type config struct {
@@ -18,6 +19,7 @@ type config struct {
 	password string
 }
 
+// WithDatabase задаёт имя базы данных для заглушки.
 func WithDatabase(name string) testcontainers.CustomizeRequestOption {
 	return func(r *testcontainers.Request) {
 		if r.Env == nil {
@@ -27,6 +29,7 @@ func WithDatabase(name string) testcontainers.CustomizeRequestOption {
 	}
 }
 
+// WithUsername задаёт имя пользователя.
 func WithUsername(username string) testcontainers.CustomizeRequestOption {
 	return func(r *testcontainers.Request) {
 		if r.Env == nil {
@@ -36,6 +39,7 @@ func WithUsername(username string) testcontainers.CustomizeRequestOption {
 	}
 }
 
+// WithPassword задаёт пароль пользователя.
 func WithPassword(password string) testcontainers.CustomizeRequestOption {
 	return func(r *testcontainers.Request) {
 		if r.Env == nil {
@@ -45,10 +49,12 @@ func WithPassword(password string) testcontainers.CustomizeRequestOption {
 	}
 }
 
+// PostgresContainer представляет запущенный заглушечный контейнер.
 type PostgresContainer struct {
 	dsn string
 }
 
+// RunContainer создаёт заглушечный контейнер PostgreSQL.
 func RunContainer(ctx context.Context, opts ...testcontainers.CustomizeRequestOption) (*PostgresContainer, error) {
 	_ = ctx
 	req := &testcontainers.Request{Env: make(map[string]string)}
@@ -65,6 +71,7 @@ func RunContainer(ctx context.Context, opts ...testcontainers.CustomizeRequestOp
 	return &PostgresContainer{dsn: dsn}, nil
 }
 
+// ConnectionString возвращает DSN для подключения.
 func (c *PostgresContainer) ConnectionString(ctx context.Context, params ...string) (string, error) {
 	_ = ctx
 	if len(params) == 0 {
@@ -73,6 +80,7 @@ func (c *PostgresContainer) ConnectionString(ctx context.Context, params ...stri
 	return c.dsn + "?" + strings.Join(params, "&"), nil
 }
 
+// Terminate завершает работу контейнера.
 func (c *PostgresContainer) Terminate(ctx context.Context) error {
 	_ = ctx
 	return nil

@@ -14,6 +14,7 @@ type logEntry struct {
 	TraceID string `json:"traceId"`
 }
 
+// TestLoggerHonorsLogLevel проверяет соблюдение уровней логирования.
 func TestLoggerHonorsLogLevel(t *testing.T) {
 	buf := &bytes.Buffer{}
 	logger, err := logging.New("info", logging.WithWriter(buf))
@@ -32,6 +33,7 @@ func TestLoggerHonorsLogLevel(t *testing.T) {
 	}
 }
 
+// TestLoggerTraceID удостоверяется, что идентификатор трассы попадает в вывод.
 func TestLoggerTraceID(t *testing.T) {
 	buf := &bytes.Buffer{}
 	logger, err := logging.New("debug", logging.WithWriter(buf))

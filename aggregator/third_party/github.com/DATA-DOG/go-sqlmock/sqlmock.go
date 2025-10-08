@@ -1,18 +1,19 @@
 package sqlmock
 
 import (
-	"context"
-	"database/sql"
-	"database/sql/driver"
-	"errors"
-	"fmt"
-	"io"
-	"reflect"
-	"regexp"
-	"sync"
-	"sync/atomic"
+        "context"
+        "database/sql"
+        "database/sql/driver"
+        "errors"
+        "fmt"
+        "io"
+        "reflect"
+        "regexp"
+        "sync"
+        "sync/atomic"
 )
 
+// Sqlmock описывает интерфейс для установки ожиданий.
 type Sqlmock interface {
 	ExpectPing() Sqlmock
 	ExpectExec(pattern string) *ExpectedExec
@@ -21,12 +22,15 @@ type Sqlmock interface {
 	ExpectationsWereMet() error
 }
 
+// AnyArgMarker используется для обозначения любого аргумента.
 type AnyArgMarker struct{}
 
+// AnyArg возвращает маркер, принимающий любое значение аргумента.
 func AnyArg() AnyArgMarker { return AnyArgMarker{} }
 
 var driverCounter atomic.Int64
 
+// New создаёт базу данных и мок для установки ожиданий.
 func New() (*sql.DB, Sqlmock, error) {
 	name := fmt.Sprintf("sqlmock_driver_%d", driverCounter.Add(1))
 	m := &mock{}
@@ -116,6 +120,7 @@ func (c *closeExpectation) mark()            { c.satisfied = true }
 func (c *closeExpectation) done() bool       { return c.satisfied }
 func (c *closeExpectation) describe() string { return "close" }
 
+// ExpectedExec описывает ожидаемое выполнение запроса.
 type ExpectedExec struct {
 	pattern   *regexp.Regexp
 	args      []interface{}
@@ -123,11 +128,13 @@ type ExpectedExec struct {
 	satisfied bool
 }
 
+// WithArgs задаёт ожидаемые аргументы.
 func (e *ExpectedExec) WithArgs(args ...interface{}) *ExpectedExec {
 	e.args = append([]interface{}(nil), args...)
 	return e
 }
 
+// WillReturnResult задаёт результат исполнения.
 func (e *ExpectedExec) WillReturnResult(result driver.Result) *ExpectedExec {
 	e.result = result
 	return e
@@ -137,6 +144,7 @@ func (e *ExpectedExec) mark()            { e.satisfied = true }
 func (e *ExpectedExec) done() bool       { return e.satisfied }
 func (e *ExpectedExec) describe() string { return "exec " + e.pattern.String() }
 
+// ExpectedQuery описывает ожидаемый запрос выборки.
 type ExpectedQuery struct {
 	pattern   *regexp.Regexp
 	args      []interface{}
@@ -144,11 +152,13 @@ type ExpectedQuery struct {
 	satisfied bool
 }
 
+// WithArgs задаёт ожидаемые аргументы запроса.
 func (q *ExpectedQuery) WithArgs(args ...interface{}) *ExpectedQuery {
 	q.args = append([]interface{}(nil), args...)
 	return q
 }
 
+// WillReturnRows задаёт результат запроса.
 func (q *ExpectedQuery) WillReturnRows(rows *Rows) *ExpectedQuery {
 	q.rows = rows
 	return q
@@ -158,15 +168,18 @@ func (q *ExpectedQuery) mark()            { q.satisfied = true }
 func (q *ExpectedQuery) done() bool       { return q.satisfied }
 func (q *ExpectedQuery) describe() string { return "query " + q.pattern.String() }
 
+// Rows представляет набор строк, возвращаемых запросом.
 type Rows struct {
 	columns []string
 	data    [][]driver.Value
 }
 
+// NewRows создаёт новый набор строк.
 func NewRows(columns []string) *Rows {
 	return &Rows{columns: append([]string(nil), columns...)}
 }
 
+// AddRow добавляет строку в результирующий набор.
 func (r *Rows) AddRow(values ...interface{}) *Rows {
 	row := make([]driver.Value, len(values))
 	for i, v := range values {
@@ -176,6 +189,7 @@ func (r *Rows) AddRow(values ...interface{}) *Rows {
 	return r
 }
 
+// NewResult создаёт объект driver.Result с заданными значениями.
 func NewResult(lastInsertID, rowsAffected int64) driver.Result {
 	return &result{lastID: lastInsertID, rows: rowsAffected}
 }

@@ -12,6 +12,7 @@ import (
 	"aggregator/internal/domain"
 )
 
+// TestWorkerPoolCalculatesMax проверяет вычисление максимума полезной нагрузки и корректность результатов.
 func TestWorkerPoolCalculatesMax(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -82,6 +83,7 @@ func TestWorkerPoolCalculatesMax(t *testing.T) {
 	}
 }
 
+// TestWorkerPoolShutdownProcessesAllPackets убеждается, что при остановке обрабатываются все ожидающие пакеты.
 func TestWorkerPoolShutdownProcessesAllPackets(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -129,6 +131,7 @@ func TestWorkerPoolShutdownProcessesAllPackets(t *testing.T) {
 	}
 }
 
+// testMax находит максимальный элемент в срезе для проверки результатов.
 func testMax(values []int64) int64 {
 	if len(values) == 0 {
 		return 0

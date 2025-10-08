@@ -23,6 +23,7 @@ import (
 
 type packetSample domain.PacketMax
 
+// Generate создаёт случайный PacketMax с произвольным временем и значением.
 func (packetSample) Generate(r *rand.Rand, _ int) reflect.Value {
 	offset := r.Intn(27) - 13
 	zone := time.FixedZone("prop", offset*3600)
@@ -37,6 +38,7 @@ func (packetSample) Generate(r *rand.Rand, _ int) reflect.Value {
 	return reflect.ValueOf(sample)
 }
 
+// TestPostgresRepositoryPropertyBased проверяет, что сохранённые данные совпадают с извлечёнными для случайных входов.
 func TestPostgresRepositoryPropertyBased(t *testing.T) {
 	ctx := context.Background()
 

@@ -9,15 +9,18 @@ import (
 	"aggregator/internal/domain"
 )
 
+// Repository реализует простое in-memory хранилище, выступающее заглушкой для ClickHouse.
 type Repository struct {
 	mu   sync.RWMutex
 	data map[string]domain.PacketMax
 }
 
+// NewRepository создаёт заглушку ClickHouse репозитория.
 func NewRepository() *Repository {
 	return &Repository{data: make(map[string]domain.PacketMax)}
 }
 
+// Save сохраняет переданные записи в памяти.
 func (r *Repository) Save(_ context.Context, packets []domain.PacketMax) error {
 	if len(packets) == 0 {
 		return nil
@@ -33,6 +36,7 @@ func (r *Repository) Save(_ context.Context, packets []domain.PacketMax) error {
 	return nil
 }
 
+// GetByID возвращает значение по идентификатору из памяти.
 func (r *Repository) GetByID(_ context.Context, id string) (*domain.PacketMax, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -46,6 +50,7 @@ func (r *Repository) GetByID(_ context.Context, id string) (*domain.PacketMax, e
 	return &copy, nil
 }
 
+// GetByTimeRange возвращает значения, попадающие в заданный диапазон времени.
 func (r *Repository) GetByTimeRange(_ context.Context, from, to time.Time) ([]domain.PacketMax, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

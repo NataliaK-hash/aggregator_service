@@ -13,6 +13,7 @@ import (
 	"aggregator/internal/domain"
 )
 
+// ErrRepositoryClosed сигнализирует о попытке обращения к закрытому репозиторию.
 var ErrRepositoryClosed = errors.New("postgres repository is closed")
 
 const (
@@ -23,6 +24,7 @@ const (
 
 type tickerFactory func(time.Duration) *time.Ticker
 
+// PostgresRepository реализует хранение PacketMax в PostgreSQL с асинхронными batch-вставками.
 type PostgresRepository struct {
 	db            *sql.DB
 	batchSize     int
@@ -38,6 +40,7 @@ type PostgresRepository struct {
 	makeTicker    tickerFactory
 }
 
+// Option настраивает экземпляр PostgresRepository.
 type Option func(*options)
 
 type options struct {
@@ -47,6 +50,7 @@ type options struct {
 	tickerFn      tickerFactory
 }
 
+// WithBatchSize задаёт максимальный размер батча перед отправкой данных в БД.
 func WithBatchSize(size int) Option {
 	return func(o *options) {
 		if size > 0 {
@@ -55,6 +59,7 @@ func WithBatchSize(size int) Option {
 	}
 }
 
+// WithFlushInterval задаёт интервал периодического сброса батча.
 func WithFlushInterval(interval time.Duration) Option {
 	return func(o *options) {
 		if interval > 0 {
@@ -63,6 +68,7 @@ func WithFlushInterval(interval time.Duration) Option {
 	}
 }
 
+// WithQueueSize задаёт размер буфера очереди для входящих записей.
 func WithQueueSize(size int) Option {
 	return func(o *options) {
 		if size > 0 {
@@ -71,6 +77,7 @@ func WithQueueSize(size int) Option {
 	}
 }
 
+// NewRepository создаёт репозиторий PostgreSQL и запускает фонового обработчика батчей.
 func NewRepository(db *sql.DB, opts ...Option) (*PostgresRepository, error) {
 	if db == nil {
 		return nil, errors.New("postgres repository requires db instance")
@@ -112,6 +119,7 @@ func NewRepository(db *sql.DB, opts ...Option) (*PostgresRepository, error) {
 	return repo, nil
 }
 
+// Save добавляет результаты в очередь на асинхронную вставку.
 func (r *PostgresRepository) Save(ctx context.Context, packets []domain.PacketMax) error {
 	if len(packets) == 0 {
 		return nil
@@ -136,6 +144,7 @@ func (r *PostgresRepository) Save(ctx context.Context, packets []domain.PacketMa
 	return r.getLastError()
 }
 
+// GetByID возвращает сохранённый PacketMax по идентификатору.
 func (r *PostgresRepository) GetByID(ctx context.Context, id string) (*domain.PacketMax, error) {
 	row := r.db.QueryRowContext(ctx, `SELECT id, timestamp, max_value FROM packet_max WHERE id = $1`, id)
 
@@ -150,6 +159,7 @@ func (r *PostgresRepository) GetByID(ctx context.Context, id string) (*domain.Pa
 	return &result, nil
 }
 
+// GetByTimeRange возвращает все записи в указанном диапазоне времени включительно-исключительно.
 func (r *PostgresRepository) GetByTimeRange(ctx context.Context, from, to time.Time) ([]domain.PacketMax, error) {
 	rows, err := r.db.QueryContext(ctx, `SELECT id, timestamp, max_value FROM packet_max WHERE timestamp >= $1 AND timestamp < $2 ORDER BY timestamp`, from, to)
 	if err != nil {
@@ -173,6 +183,7 @@ func (r *PostgresRepository) GetByTimeRange(ctx context.Context, from, to time.T
 	return results, nil
 }
 
+// Close останавливает фоновые горутины, сбрасывает оставшиеся батчи и закрывает соединение.
 func (r *PostgresRepository) Close(ctx context.Context) error {
 	if !atomic.CompareAndSwapUint32(&r.closing, 0, 1) {
 		select {

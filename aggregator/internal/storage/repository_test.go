@@ -12,6 +12,7 @@ import (
 	pg "aggregator/internal/storage/postgres"
 )
 
+// TestPostgresRepositorySaveBatch проверяет, что батч сохраняется при достижении размера.
 func TestPostgresRepositorySaveBatch(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
@@ -47,6 +48,7 @@ func TestPostgresRepositorySaveBatch(t *testing.T) {
 	}
 }
 
+// TestPostgresRepositoryGetByID проверяет выборку по идентификатору.
 func TestPostgresRepositoryGetByID(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
@@ -89,6 +91,7 @@ func TestPostgresRepositoryGetByID(t *testing.T) {
 	}
 }
 
+// TestPostgresRepositoryGetByTimeRange проверяет выборку по диапазону времени.
 func TestPostgresRepositoryGetByTimeRange(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {

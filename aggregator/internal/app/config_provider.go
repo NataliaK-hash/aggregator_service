@@ -5,6 +5,7 @@ import (
 	"aggregator/internal/generator"
 )
 
+// provideGeneratorConfig формирует конфигурацию генератора для системы внедрения зависимостей.
 func provideGeneratorConfig(cfg *config.Config) generator.Config {
 	return generator.Config{
 		PayloadLen: cfg.Generator.PayloadLen,
