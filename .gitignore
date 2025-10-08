@@ -1,0 +1,6 @@
+.env
+*.log
+bin/
+vendor/
+.idea/
+.DS_Store
