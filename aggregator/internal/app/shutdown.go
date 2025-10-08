@@ -80,3 +80,12 @@ func (sm *ShutdownManager) Close() {
 		}
 	})
 }
+
+func (sm *ShutdownManager) WaitFor(ctx context.Context, done <-chan struct{}) error {
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}

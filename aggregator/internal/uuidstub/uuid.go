@@ -35,3 +35,7 @@ func (u UUID) String() string {
 
 	return string(buf[:])
 }
+
+func NewString() string {
+	return New().String()
+}

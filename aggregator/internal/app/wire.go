@@ -11,6 +11,7 @@ import (
 	"aggregator/internal/config"
 	"aggregator/internal/generator"
 	"aggregator/internal/logging"
+	"aggregator/internal/storage"
 )
 
 func InitializeApp() (*App, error) {
@@ -19,6 +20,8 @@ func InitializeApp() (*App, error) {
 		provideLogger,
 		provideGeneratorConfig,
 		generator.ProviderSet,
+		provideWorkerPool,
+		storage.ProviderSet,
 		provideShutdownManager,
 		New,
 	))
@@ -33,4 +36,8 @@ func provideLogger(cfg *config.Config) (*logging.Logger, error) {
 func provideShutdownManager(l *logging.Logger) *ShutdownManager {
 	const shutdownTimeout = 30 * time.Second
 	return NewShutdownManager(shutdownTimeout, l)
+}
+
+func provideWorkerPool(cfg *config.Config) *WorkerPool {
+	return NewWorkerPool(cfg.WorkerPoolSize)
 }
