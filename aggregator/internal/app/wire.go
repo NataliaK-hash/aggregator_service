@@ -21,7 +21,6 @@ func InitializeApp() (*App, error) {
 		provideGeneratorConfig,
 		generator.ProviderSet,
 		provideWorkerPool,
-		storage.ProviderSet,
 		provideShutdownManager,
 		New,
 	))
