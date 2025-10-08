@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -61,5 +63,42 @@ func TestLoggerPrintlnOmitsEmptyTraceID(t *testing.T) {
 	}
 	if entry["message"] != "message" {
 		t.Fatalf("unexpected message: %v", entry["message"])
+	}
+}
+
+func TestNewLoggerDefaults(t *testing.T) {
+	logger := NewLogger(nil, " ")
+	if logger == nil {
+		t.Fatal("expected logger to be created")
+	}
+	logger.Printf(context.Background(), "hello")
+}
+
+func TestWithCorrelationIDHandlesNilContext(t *testing.T) {
+	ctx := WithCorrelationID(nil, " id ")
+	if got := CorrelationIDFromContext(ctx); got != "id" {
+		t.Fatalf("expected id, got %s", got)
+	}
+}
+
+func TestCorrelationIDFromContextMissing(t *testing.T) {
+	if CorrelationIDFromContext(nil) != "" {
+		t.Fatalf("expected empty id")
+	}
+}
+
+func TestLoggerFatalfExits(t *testing.T) {
+	if os.Getenv("LOGGER_FATALF_SUBPROCESS") == "1" {
+		logger := NewLogger(os.Stdout, "test")
+		logger.Fatalf(context.Background(), "fatal")
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestLoggerFatalfExits")
+	cmd.Env = append(os.Environ(), "LOGGER_FATALF_SUBPROCESS=1")
+
+	err := cmd.Run()
+	if err == nil {
+		t.Fatalf("expected process to exit with error")
 	}
 }

@@ -41,13 +41,6 @@ services:
       timeout: 5s
       retries: 3
 
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: node-exporter
-    restart: unless-stopped
-    ports:
-      - "9100:9100"
-
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -70,7 +63,8 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
-      - ./app/resources/grafana:/etc/grafana/provisioning
+      - ./app/resources/grafana/provisioning:/etc/grafana/provisioning
+      - ./app/resources/grafana/dashboards:/var/lib/grafana/dashboards
     ports:
       - "3000:3000"
     depends_on:

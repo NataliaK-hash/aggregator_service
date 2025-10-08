@@ -23,8 +23,7 @@ build:
 # -------------------------------
 test-unit:
 	@echo "Running unit tests..."
-	go test ./app/tests/unit/...
-
+	go test -v -count=1 ./app/tests/unit/...
 # -------------------------------
 # Run application
 # -------------------------------
@@ -36,10 +35,9 @@ run: migrate
 # Integration tests
 # -------------------------------
 test-integration:
-	@echo Running integration tests...
-	@docker info >nul 2>&1 || (echo Docker not available, skipping tests. && exit 0)
-	@go test ./app/tests/integration/...
-
+	@echo "Running integration tests..."
+	@docker info > /dev/null 2>&1 || (echo "Docker not available, skipping tests." && exit 0)
+	go test -v -count=1 ./app/tests/integration/...
 # -------------------------------
 # Clean build artifacts
 # -------------------------------
@@ -48,12 +46,27 @@ clean:
 	@if [ -d $(BIN_DIR) ]; then rm -rf $(BIN_DIR); fi
 
 # -------------------------------
-# Run database migrations
+# Run database migrations (cross-platform)
 # -------------------------------
+UNAME_S := $(shell uname -s)
+
 migrate:
 	@echo "Running migrations..."
+ifeq ($(OS),Windows_NT)
+	@echo "Detected OS: Windows"
+	powershell -Command "Start-Sleep -Seconds 3"
 	go run ./app/src/cmd/migrate/main.go --dir $(MIGRATIONS_DIR)
-
+else ifeq ($(UNAME_S),Darwin)
+	@echo "Detected OS: macOS"
+	sleep 3
+	go run ./app/src/cmd/migrate/main.go --dir $(MIGRATIONS_DIR)
+else ifeq ($(UNAME_S),Linux)
+	@echo "Detected OS: Linux"
+	sleep 3
+	go run ./app/src/cmd/migrate/main.go --dir $(MIGRATIONS_DIR)
+else
+	@echo "⚠️ Unsupported OS detected: $(UNAME_S)"
+endif
 # -------------------------------
 # Refresh dependencies
 # -------------------------------

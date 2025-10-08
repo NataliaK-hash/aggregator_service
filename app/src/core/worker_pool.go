@@ -1,21 +1,18 @@
 package core
 
 import (
-	"context"
-	"sync"
-
 	"aggregator-service/app/src/domain"
 	"aggregator-service/app/src/infra"
+	"context"
+	"sync"
 )
 
-// WorkerPool consumes data packets and stores their measurements using the repository.
 type WorkerPool struct {
 	repo        domain.PacketMaxWriter
 	workerCount int
 	logger      Logger
 }
 
-// NewWorkerPool creates a pool with the provided repository and worker count.
 func NewWorkerPool(workerCount int, repo domain.PacketMaxWriter, logger Logger) *WorkerPool {
 	if workerCount < 0 {
 		workerCount = 0
@@ -23,7 +20,6 @@ func NewWorkerPool(workerCount int, repo domain.PacketMaxWriter, logger Logger) 
 	return &WorkerPool{repo: repo, workerCount: workerCount, logger: logger}
 }
 
-// Run starts the worker pool and blocks until the context is cancelled or the packets channel is closed.
 func (p *WorkerPool) Run(ctx context.Context, packets <-chan domain.DataPacket) {
 	if p.workerCount == 0 {
 		p.drainUntilClosed(ctx, packets)
@@ -32,6 +28,7 @@ func (p *WorkerPool) Run(ctx context.Context, packets <-chan domain.DataPacket) 
 
 	var wg sync.WaitGroup
 	wg.Add(p.workerCount)
+
 	for i := 0; i < p.workerCount; i++ {
 		go func() {
 			infra.WorkerStarted()
@@ -63,31 +60,39 @@ func (p *WorkerPool) processPacket(ctx context.Context, packet domain.DataPacket
 		return
 	}
 
-	var (
-		maxMeasurement domain.Measurement
-		found          bool
-	)
-	for _, measurement := range packet.Measurements {
-		if ctx.Err() != nil {
-			p.log(ctx, "worker: aborting packet %s due to context: %v", packet.ID, ctx.Err())
-			return
-		}
-
-		if !found || measurement.Value > maxMeasurement.Value || (measurement.Value == maxMeasurement.Value && measurement.Timestamp.After(maxMeasurement.Timestamp)) {
-			maxMeasurement = measurement
-			found = true
-		}
-	}
-
+	maxMeasurement, found := p.findMaxMeasurement(ctx, packet)
 	if !found {
 		return
 	}
 
+	p.storePacketMax(ctx, packet, maxMeasurement)
+}
+
+func (p *WorkerPool) findMaxMeasurement(ctx context.Context, packet domain.DataPacket) (domain.Measurement, bool) {
+	var (
+		maxMeasurement domain.Measurement
+		found          bool
+	)
+	for _, m := range packet.Measurements {
+		if ctx.Err() != nil {
+			p.log(ctx, "worker: aborting packet %s due to context: %v", packet.ID, ctx.Err())
+			return domain.Measurement{}, false
+		}
+		if !found || m.Value > maxMeasurement.Value ||
+			(m.Value == maxMeasurement.Value && m.Timestamp.After(maxMeasurement.Timestamp)) {
+			maxMeasurement = m
+			found = true
+		}
+	}
+	return maxMeasurement, found
+}
+
+func (p *WorkerPool) storePacketMax(ctx context.Context, packet domain.DataPacket, m domain.Measurement) {
 	packetMax := domain.PacketMax{
-		PacketID:  maxMeasurement.PacketID,
-		SourceID:  maxMeasurement.SourceID,
-		Value:     maxMeasurement.Value,
-		Timestamp: maxMeasurement.Timestamp,
+		PacketID:  m.PacketID,
+		SourceID:  m.SourceID,
+		Value:     m.Value,
+		Timestamp: m.Timestamp,
 	}
 
 	if err := p.repo.Add(ctx, packetMax); err != nil {
@@ -111,10 +116,9 @@ func (p *WorkerPool) drainUntilClosed(ctx context.Context, packets <-chan domain
 }
 
 func (p *WorkerPool) log(ctx context.Context, format string, v ...any) {
-	if p.logger == nil {
-		return
+	if p.logger != nil {
+		p.logger.Printf(ctx, format, v...)
 	}
-	p.logger.Printf(ctx, format, v...)
 }
 
 var _ domain.WorkerPool = (*WorkerPool)(nil)

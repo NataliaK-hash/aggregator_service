@@ -11,12 +11,10 @@ type contextKey struct{}
 
 var routeCtxKey = contextKey{}
 
-// RoutingContext carries routing metadata for the current request.
 type RoutingContext struct {
 	routePattern string
 }
 
-// RoutePattern returns the matched route pattern.
 func (rc *RoutingContext) RoutePattern() string {
 	if rc == nil {
 		return ""
@@ -24,7 +22,6 @@ func (rc *RoutingContext) RoutePattern() string {
 	return rc.routePattern
 }
 
-// RouteContext retrieves the routing context from the provided request context.
 func RouteContext(ctx context.Context) *RoutingContext {
 	if ctx == nil {
 		return nil
@@ -35,7 +32,6 @@ func RouteContext(ctx context.Context) *RoutingContext {
 	return nil
 }
 
-// Mux is a lightweight HTTP multiplexer with middleware support.
 type Mux struct {
 	middlewares      []func(http.Handler) http.Handler
 	routes           map[string]map[string]http.Handler
@@ -43,14 +39,12 @@ type Mux struct {
 	methodNotAllowed http.Handler
 }
 
-// NewRouter constructs a new Mux instance.
 func NewRouter() *Mux {
 	return &Mux{
 		routes: make(map[string]map[string]http.Handler),
 	}
 }
 
-// Use appends middleware handlers to be executed for every request.
 func (m *Mux) Use(middlewares ...func(http.Handler) http.Handler) {
 	if len(middlewares) == 0 {
 		return
@@ -58,12 +52,10 @@ func (m *Mux) Use(middlewares ...func(http.Handler) http.Handler) {
 	m.middlewares = append(m.middlewares, middlewares...)
 }
 
-// Get registers a handler for HTTP GET requests on the given pattern.
 func (m *Mux) Get(pattern string, handler http.HandlerFunc) {
 	m.Method(http.MethodGet, pattern, handler)
 }
 
-// Method registers a handler for a given HTTP method and pattern.
 func (m *Mux) Method(method, pattern string, handler http.HandlerFunc) {
 	if method == "" || pattern == "" || handler == nil {
 		return
@@ -75,7 +67,6 @@ func (m *Mux) Method(method, pattern string, handler http.HandlerFunc) {
 	m.routes[method][pattern] = handler
 }
 
-// ServeHTTP dispatches the request to the registered handler chain.
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r == nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
@@ -126,12 +117,10 @@ func (m *Mux) serveWithMiddlewares(pattern string, handler http.Handler, w http.
 	final.ServeHTTP(w, req)
 }
 
-// NotFound sets a custom handler for unmatched routes.
 func (m *Mux) NotFound(handler http.HandlerFunc) {
 	m.notFound = handler
 }
 
-// MethodNotAllowed sets a custom handler when the path matches but the method does not.
 func (m *Mux) MethodNotAllowed(handler http.HandlerFunc) {
 	m.methodNotAllowed = handler
 }

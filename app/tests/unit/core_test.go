@@ -16,6 +16,7 @@ import (
 func TestGeneratorProducesPackets(t *testing.T) {
 	t.Parallel()
 
+	t.Log("настраиваем контекст и генератор пакетов")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -29,6 +30,7 @@ func TestGeneratorProducesPackets(t *testing.T) {
 	packets := make(chan domain.DataPacket, 4)
 	gen := core.NewGenerator(cfg, logger)
 
+	t.Log("запускаем генератор и ожидаем поступление пакетов")
 	go gen.Run(ctx, packets)
 
 	var received []domain.DataPacket
@@ -47,6 +49,7 @@ func TestGeneratorProducesPackets(t *testing.T) {
 
 	cancel()
 
+	t.Log("проверяем корректность полученных пакетов")
 	for _, packet := range received {
 		if packet.ID == "" {
 			t.Fatal("packet ID should not be empty")
@@ -71,6 +74,7 @@ func TestGeneratorProducesPackets(t *testing.T) {
 func TestWorkerPoolProcessesPackets(t *testing.T) {
 	t.Parallel()
 
+	t.Log("подготавливаем контекст и пул воркеров")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -81,6 +85,7 @@ func TestWorkerPoolProcessesPackets(t *testing.T) {
 	packets := make(chan domain.DataPacket)
 	done := make(chan struct{})
 
+	t.Log("запускаем пул и отправляем тестовые пакеты")
 	go func() {
 		pool.Run(ctx, packets)
 		close(done)
@@ -102,6 +107,7 @@ func TestWorkerPoolProcessesPackets(t *testing.T) {
 	cancel()
 	waitForDone(t, done)
 
+	t.Log("проверяем сохранённые результаты")
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 	if len(repo.packetMaxes) != expected {
@@ -112,6 +118,7 @@ func TestWorkerPoolProcessesPackets(t *testing.T) {
 func TestWorkerPoolContinuesAfterError(t *testing.T) {
 	t.Parallel()
 
+	t.Log("создаём окружение с репозиторием, возвращающим ошибку")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -130,6 +137,7 @@ func TestWorkerPoolContinuesAfterError(t *testing.T) {
 
 	first := domain.DataPacket{ID: "packet1", Measurements: []domain.Measurement{{PacketID: "packet1", SourceID: "s1", Value: 1, Timestamp: time.Now()}}}
 	second := domain.DataPacket{ID: "packet2", Measurements: []domain.Measurement{{PacketID: "packet2", SourceID: "s2", Value: 2, Timestamp: time.Now()}}}
+	t.Log("отправляем пакеты, один из которых вызовет ошибку")
 	packets <- first
 	packets <- second
 	close(packets)
@@ -138,6 +146,7 @@ func TestWorkerPoolContinuesAfterError(t *testing.T) {
 	cancel()
 	waitForDone(t, done)
 
+	t.Log("убеждаемся, что обработка продолжилась после ошибки")
 	repo.mu.Lock()
 	defer repo.mu.Unlock()
 	if len(repo.packetMaxes) != 1 {

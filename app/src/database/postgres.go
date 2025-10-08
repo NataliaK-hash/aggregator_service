@@ -154,6 +154,10 @@ func (r *Repository) Add(ctx context.Context, packetMax domain.PacketMax) error 
 		return err
 	}
 
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	r.mu.RLock()
 	closed := r.closed
 	stopCh := r.stopCh
