@@ -30,9 +30,8 @@ func main() {
 			},
 			func(l *logging.Logger) *app.ShutdownManager { return app.NewShutdownManager(30*time.Second, l) },
 			func(cfg *config.Config) *app.WorkerPool { return app.NewWorkerPool(cfg.WorkerPoolSize) },
-			storage.ProvideRepository,
-			func(cfg *config.Config, l *logging.Logger, sm *app.ShutdownManager, src generator.Source, wp *app.WorkerPool, repo storage.Repository) *app.App {
-				return app.New(cfg, l, sm, src, wp, repo)
+			func(cfg *config.Config, l *logging.Logger, sm *app.ShutdownManager, src generator.Source, wp *app.WorkerPool) *app.App {
+				return app.New(cfg, l, sm, src, wp)
 			},
 		),
 		fx.Invoke(func(lc fx.Lifecycle, a *app.App) {

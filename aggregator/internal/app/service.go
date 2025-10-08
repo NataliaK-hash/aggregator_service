@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"aggregator/internal/config"
-	"aggregator/internal/domain"
 	"aggregator/internal/generator"
 	"aggregator/internal/logging"
 	"aggregator/internal/storage"
@@ -17,11 +16,10 @@ type App struct {
 	shutdownManager *ShutdownManager
 	source          generator.Source
 	workerPool      *WorkerPool
-	repository      storage.Repository
 }
 
-func New(cfg *config.Config, logger *logging.Logger, shutdownManager *ShutdownManager, source generator.Source, workerPool *WorkerPool, repository storage.Repository) *App {
-	return &App{config: cfg, logger: logger, shutdownManager: shutdownManager, source: source, workerPool: workerPool, repository: repository}
+func New(cfg *config.Config, logger *logging.Logger, shutdownManager *ShutdownManager, source generator.Source, workerPool *WorkerPool) *App {
+	return &App{config: cfg, logger: logger, shutdownManager: shutdownManager, source: source, workerPool: workerPool}
 }
 
 func (a *App) Run(ctx context.Context) error {
@@ -44,7 +42,7 @@ func (a *App) Run(ctx context.Context) error {
 	if a.source != nil && a.workerPool != nil {
 		packets := a.source.Start(runCtx)
 		a.workerPool.Start(runCtx, packets)
-		resultsDone = a.consumeResults(runCtx)
+		resultsDone = a.consumeResults()
 		processingStarted = true
 	}
 
@@ -72,14 +70,6 @@ func (a *App) Run(ctx context.Context) error {
 		}
 	}
 
-	if closable, ok := a.repository.(storage.Closer); ok && a.repository != nil {
-		if err := closable.Close(cleanupCtx); err != nil {
-			if shutdownErr == nil {
-				shutdownErr = err
-			}
-		}
-	}
-
 	if a.logger != nil {
 		switch {
 		case errors.Is(shutdownErr, context.DeadlineExceeded):
@@ -94,25 +84,13 @@ func (a *App) Run(ctx context.Context) error {
 	return nil
 }
 
-func (a *App) consumeResults(ctx context.Context) <-chan struct{} {
+func (a *App) consumeResults() <-chan struct{} {
 	done := make(chan struct{})
 
 	go func() {
 		defer close(done)
 
-		buffer := make([]domain.PacketMax, 1)
-
 		for result := range a.workerPool.Results() {
-			if a.repository != nil {
-				buffer[0] = result
-				saveCtx := ctx
-				if saveCtx == nil || saveCtx.Err() != nil {
-					saveCtx = context.Background()
-				}
-				if err := a.repository.Save(saveCtx, buffer); err != nil && a.logger != nil {
-					a.logger.Error("failed to persist packet", "packetId", result.ID, "error", err)
-				}
-			}
 			if a.logger != nil {
 				a.logger.Debug("packet processed", "packetId", result.ID, "maxValue", result.MaxValue)
 			}

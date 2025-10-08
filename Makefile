@@ -1,9 +1,8 @@
 BINARY := aggregator
 CMD := ./cmd/aggregator
 BIN_DIR := ./bin
-MIGRATIONS_DIR := ./aggregator/internal/storage/postgres/migrations
 
-.PHONY: all build run test lint clean test-generator bench-generator migrate
+.PHONY: all build run test lint clean test-generator bench-generator
 
 # Запускаем всё по умолчанию (сборка + тесты)
 all: build test
@@ -40,11 +39,5 @@ test-generator:
 
 # Бенчмарки генератора
 bench-generator:
-        @echo "Running generator benchmarks..."
-        cd aggregator && go test -bench=. ./internal/generator -benchmem -run=^$
-
-# Применение миграций БД через golang-migrate
-migrate:
-        @if [ -z "$$DB_DSN" ]; then echo "DB_DSN environment variable is required"; exit 1; fi
-        @echo "Running migrations..."
-        migrate -path $(MIGRATIONS_DIR) -database $$DB_DSN up
+	@echo "Running generator benchmarks..."
+	cd aggregator && go test -bench=. ./internal/generator -benchmem -run=^$

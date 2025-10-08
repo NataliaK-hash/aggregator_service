@@ -1,3 +1,4 @@
+//go:generate go run -mod=mod github.com/google/wire/cmd/wire
 //go:build !wireinject
 // +build !wireinject
 
@@ -7,7 +8,6 @@ import (
 	"aggregator/internal/config"
 	"aggregator/internal/generator"
 	"aggregator/internal/logging"
-	"aggregator/internal/storage"
 	"time"
 )
 
@@ -24,11 +24,7 @@ func InitializeApp() (*App, error) {
 	generatorConfig := provideGeneratorConfig(config)
 	source := generator.NewRandomSource(generatorConfig)
 	workerPool := provideWorkerPool(config)
-	repository, err := storage.ProvideRepository(config, logger)
-	if err != nil {
-		return nil, err
-	}
-	app := New(config, logger, shutdownManager, source, workerPool, repository)
+	app := New(config, logger, shutdownManager, source, workerPool)
 	return app, nil
 }
 
