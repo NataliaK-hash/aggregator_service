@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"aggregator-service/app/src/domain"
+	"aggregator-service/app/src/infra"
 )
 
 // WorkerPool consumes data packets and stores their measurements using the repository.
@@ -33,7 +34,9 @@ func (p *WorkerPool) Run(ctx context.Context, packets <-chan domain.DataPacket) 
 	wg.Add(p.workerCount)
 	for i := 0; i < p.workerCount; i++ {
 		go func() {
+			infra.WorkerStarted()
 			defer wg.Done()
+			defer infra.WorkerFinished()
 			p.workerLoop(ctx, packets)
 		}()
 	}

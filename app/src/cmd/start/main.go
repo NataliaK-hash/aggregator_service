@@ -35,6 +35,7 @@ func main() {
 	logger := app.Logger
 
 	infra.LogConfig(ctx, logger, cfg)
+	infra.StartMetricsServer(logger)
 
 	service := app.Service
 	generator := app.Generator
@@ -75,28 +76,6 @@ func main() {
 		logger.Fatalf(ctx, "failed to listen on gRPC port %s: %v", cfg.GRPCPort, err)
 	}
 
-	var (
-		metricsServer   *http.Server
-		metricsListener net.Listener
-	)
-	if cfg.MetricsPort != "" {
-		metricsServer = &http.Server{
-			Addr:              fmt.Sprintf(":%s", cfg.MetricsPort),
-			Handler:           infra.Handler(),
-			ReadHeaderTimeout: 5 * time.Second,
-			ReadTimeout:       5 * time.Second,
-			WriteTimeout:      10 * time.Second,
-			IdleTimeout:       60 * time.Second,
-		}
-
-		metricsListener, err = net.Listen("tcp", metricsServer.Addr)
-		if err != nil {
-			stop()
-			workers.Wait()
-			logger.Fatalf(ctx, "failed to listen on metrics port %s: %v", cfg.MetricsPort, err)
-		}
-	}
-
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -107,15 +86,9 @@ func main() {
 		}
 
 		grpcServer.GracefulStop()
-
-		if metricsServer != nil {
-			if err := metricsServer.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				logger.Printf(ctx, "metrics server shutdown error: %v", err)
-			}
-		}
 	}()
 
-	serverErrs := make(chan error, 3)
+	serverErrs := make(chan error, 2)
 	var serverGroup sync.WaitGroup
 
 	serverGroup.Add(1)
@@ -136,18 +109,7 @@ func main() {
 		}
 	}()
 
-	if metricsServer != nil {
-		serverGroup.Add(1)
-		go func() {
-			defer serverGroup.Done()
-			logger.Printf(ctx, "metrics server listening on %s", metricsListener.Addr())
-			if err := metricsServer.Serve(metricsListener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				serverErrs <- fmt.Errorf("metrics server: %w", err)
-			}
-		}()
-	} else {
-		logger.Println(ctx, "metrics server disabled")
-	}
+	logger.Println(ctx, "metrics server listening on :2112")
 
 	var serveErr error
 

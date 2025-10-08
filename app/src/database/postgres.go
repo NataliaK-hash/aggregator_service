@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"aggregator-service/app/src/domain"
-	"aggregator-service/app/src/infra"
+	metrics "aggregator-service/app/src/infra"
 	"aggregator-service/app/src/shared/constants"
 )
 
@@ -21,7 +21,7 @@ import (
 type Config struct {
 	DSN    string
 	Runner CommandRunner
-	Logger *infra.Logger
+	Logger *metrics.Logger
 	// BatchSize determines how many measurements are flushed together.
 	BatchSize int
 	// BatchTimeout specifies how long to wait before flushing a partial batch.
@@ -42,7 +42,7 @@ type Repository struct {
 	password string
 
 	runner CommandRunner
-	logger *infra.Logger
+	logger *metrics.Logger
 
 	batchSize    int
 	batchTimeout time.Duration
@@ -178,8 +178,8 @@ func (r *Repository) run() {
 	defer r.wg.Done()
 
 	batch := make([]domain.PacketMax, 0, r.batchSize)
-	var batchStart time.Time
 	var timer *time.Timer
+	var firstItemTime time.Time
 
 	activateTimer := func() {
 		if r.batchTimeout <= 0 {
@@ -216,16 +216,22 @@ func (r *Repository) run() {
 		if len(batch) == 0 {
 			return
 		}
-		wait := time.Since(batchStart)
-		r.processBatch(batch, wait)
+		if !firstItemTime.IsZero() {
+			metrics.DbBatchWaitSeconds.Observe(time.Since(firstItemTime).Seconds())
+		}
+		metrics.DbBatchSize.Set(float64(len(batch)))
+		start := time.Now()
+		r.processBatch(batch)
+		metrics.RecordDBBatchFlush(time.Since(start))
 		batch = batch[:0]
 		deactivateTimer()
+		firstItemTime = time.Time{}
 	}
 
 	appendToBatch := func(packetMax domain.PacketMax) {
 		batch = append(batch, packetMax)
 		if len(batch) == 1 {
-			batchStart = time.Now()
+			firstItemTime = time.Now()
 			activateTimer()
 		}
 		if len(batch) >= r.batchSize {
@@ -258,7 +264,7 @@ func (r *Repository) run() {
 	}
 }
 
-func (r *Repository) processBatch(batch []domain.PacketMax, wait time.Duration) {
+func (r *Repository) processBatch(batch []domain.PacketMax) {
 	if len(batch) == 0 {
 		return
 	}
@@ -272,8 +278,6 @@ func (r *Repository) processBatch(batch []domain.PacketMax, wait time.Duration) 
 		}
 	}
 
-	infra.ObserveDBBatchSize(len(batch))
-	infra.ObserveDBBatchWait(wait)
 }
 
 func (r *Repository) writePacketMax(ctx context.Context, packetMax domain.PacketMax) error {
@@ -282,22 +286,16 @@ func (r *Repository) writePacketMax(ctx context.Context, packetMax domain.Packet
 	insertTag, err := r.execStatement(ctx, insertMeasurementSQL, packetMax, timestamp)
 	if err == nil {
 		if _, err := parseRowsAffected(insertTag); err != nil {
-			infra.IncErrors()
-			infra.IncDBWriteErrors()
 			if r.logger != nil {
 				r.logger.Printf(ctx, "postgres repository: parse insert result failed packet=%s source=%s tag=%q: %v", packetMax.PacketID, packetMax.SourceID, insertTag, err)
 			}
 			return fmt.Errorf("postgres repository: parse insert result: %w", err)
 		}
 
-		infra.IncDBWrites()
-		infra.IncPackets()
 		return nil
 	}
 
 	if !isUniqueViolation(err) {
-		infra.IncErrors()
-		infra.IncDBWriteErrors()
 		if r.logger != nil {
 			r.logger.Printf(ctx, "postgres repository: insert failed packet=%s source=%s value=%v ts=%s: %v", packetMax.PacketID, packetMax.SourceID, packetMax.Value, timestamp.Format(time.RFC3339Nano), err)
 		}
@@ -311,16 +309,12 @@ func (r *Repository) writePacketMax(ctx context.Context, packetMax domain.Packet
 
 	affected, err := parseRowsAffected(updateTag)
 	if err != nil {
-		infra.IncErrors()
-		infra.IncDBWriteErrors()
 		if r.logger != nil {
 			r.logger.Printf(ctx, "postgres repository: parse update pair result failed packet=%s source=%s tag=%q: %v", packetMax.PacketID, packetMax.SourceID, updateTag, err)
 		}
 		return fmt.Errorf("postgres repository: parse update pair result: %w", err)
 	}
 	if affected > 0 {
-		infra.IncDBWrites()
-		infra.IncPackets()
 		return nil
 	}
 
@@ -331,56 +325,41 @@ func (r *Repository) writePacketMax(ctx context.Context, packetMax domain.Packet
 
 	fallbackAffected, err := parseRowsAffected(fallbackTag)
 	if err != nil {
-		infra.IncErrors()
-		infra.IncDBWriteErrors()
 		if r.logger != nil {
 			r.logger.Printf(ctx, "postgres repository: parse update packet result failed packet=%s source=%s tag=%q: %v", packetMax.PacketID, packetMax.SourceID, fallbackTag, err)
 		}
 		return fmt.Errorf("postgres repository: parse update packet result: %w", err)
 	}
 	if fallbackAffected == 0 {
-		infra.IncErrors()
-		infra.IncDBWriteErrors()
 		if r.logger != nil {
 			r.logger.Printf(ctx, "postgres repository: update packet affected no rows packet=%s source=%s", packetMax.PacketID, packetMax.SourceID)
 		}
 		return errors.New("postgres repository: update affected 0 rows after unique violation")
 	}
 
-	infra.IncDBWrites()
-	infra.IncPackets()
 	return nil
 }
 
 func validatePacketMax(packetMax domain.PacketMax) error {
 	if packetMax.PacketID == "" {
-		infra.IncErrors()
 		return errors.New("postgres repository: packet id is required")
 	}
 	if _, err := constants.ParseUUID(packetMax.PacketID); err != nil {
-		infra.IncErrors()
 		return fmt.Errorf("postgres repository: invalid packet id: %w", err)
 	}
 	if packetMax.SourceID == "" {
-		infra.IncErrors()
 		return errors.New("postgres repository: source id is required")
 	}
 	if _, err := constants.ParseUUID(packetMax.SourceID); err != nil {
-		infra.IncErrors()
 		return fmt.Errorf("postgres repository: invalid source id: %w", err)
 	}
 	return nil
 }
 
 func (r *Repository) execStatement(ctx context.Context, statement string, packetMax domain.PacketMax, timestamp time.Time) (string, error) {
-	start := time.Now()
 	tag, err := r.runner.Exec(ctx, r.dsn, r.password, statement, packetMax.PacketID, packetMax.SourceID, packetMax.Value, timestamp)
-	duration := time.Since(start)
-	infra.ObserveDBWrite(duration)
 	if err != nil {
 		if !isUniqueViolation(err) {
-			infra.IncErrors()
-			infra.IncDBWriteErrors()
 			if r.logger != nil {
 				r.logger.Printf(ctx, "postgres repository: exec failed packet=%s source=%s value=%v ts=%s statement=%q: %v", packetMax.PacketID, packetMax.SourceID, packetMax.Value, timestamp.Format(time.RFC3339Nano), strings.TrimSpace(statement), err)
 			}

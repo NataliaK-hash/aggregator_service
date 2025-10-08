@@ -68,3 +68,27 @@ deps:
 test-flow:
 	@echo 🚀 Running full E2E flow...
 	set RUN_E2E=1 && set E2E_FORCE=1 && set E2E_OUTPUT=pretty && go test -v -count=1 ./app/tests/e2e -run ^TestE2E$
+
+# -------------------------------------
+# Run docker-compose-test (with cleanup)
+# -------------------------------------
+docker-test:
+	@echo "Stopping and removing old containers..."
+	docker-compose -f docker-compose-test.yml down --remove-orphans
+	@echo "Starting fresh docker-compose-test containers..."
+	docker-compose -f docker-compose-test.yml up --build --force-recreate -d
+	@echo "✅ docker-compose-test environment is up and running!"
+
+# -------------------------------------
+# Run full setup: docker + app
+# -------------------------------------
+run-full:
+	@echo "🚀 Start update dependency"
+	$(MAKE) deps
+	@echo "🚀 Build project"
+	$(MAKE) build
+	@echo "🚀 Starting full environment (Docker + App)..."
+	$(MAKE) docker-test
+	@echo "🚀  Starting application..."
+	$(MAKE) run
+	@echo "✅ Application is running!"
