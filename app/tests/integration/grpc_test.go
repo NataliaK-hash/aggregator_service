@@ -17,6 +17,7 @@ import (
 	"aggregator-service/app/src/domain"
 	"aggregator-service/app/src/infra"
 	"aggregator-service/app/src/shared/constants"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -29,7 +30,6 @@ const bufConnSize = 1024 * 1024
 
 func startGRPCClient(t *testing.T, service domain.AggregatorService) (pb.AggregatorServiceClient, func()) {
 	t.Helper()
-
 	listener := bufconn.Listen(bufConnSize)
 	server := grpcapi.NewServer(service, infra.NewLogger(io.Discard, "test-grpc"))
 
@@ -59,12 +59,9 @@ func startGRPCClient(t *testing.T, service domain.AggregatorService) (pb.Aggrega
 
 func performHTTPMax(t *testing.T, service domain.AggregatorService, url string) (int, []byte) {
 	t.Helper()
-
 	req := httptest.NewRequest(http.MethodGet, url, nil)
 	recorder := httptest.NewRecorder()
-
 	httpapi.NewServer(service, infra.NewLogger(io.Discard, "test-http")).ServeHTTP(recorder, req)
-
 	return recorder.Code, recorder.Body.Bytes()
 }
 
@@ -72,8 +69,8 @@ func TestGRPCMaxByIDParity(t *testing.T) {
 	t.Parallel()
 
 	id := "123e4567-e89b-12d3-a456-426614174000"
-	timestamp := time.Now().UTC().Truncate(time.Millisecond)
-	service := &stubService{resultByID: domain.AggregatorResult{PacketID: id, SourceID: "source", Value: 42.5, Timestamp: timestamp}}
+	ts := time.Now().UTC().Truncate(time.Millisecond)
+	service := &stubService{resultByID: domain.AggregatorResult{PacketID: id, SourceID: "source", Value: 42.5, Timestamp: ts}}
 
 	client, cleanup := startGRPCClient(t, service)
 	defer cleanup()
@@ -102,17 +99,14 @@ func TestGRPCMaxByIDParity(t *testing.T) {
 	if grpcResp.GetId() != httpResp.PacketID {
 		t.Fatalf("packet_id mismatch: grpc=%s http=%s", grpcResp.GetId(), httpResp.PacketID)
 	}
-
 	if httpResp.SourceID != "source" {
-		t.Fatalf("unexpected source id in HTTP response: %s", httpResp.SourceID)
+		t.Fatalf("unexpected source id: %s", httpResp.SourceID)
 	}
-
 	if grpcResp.GetMaxValue() != httpResp.Value {
 		t.Fatalf("value mismatch: grpc=%f http=%f", grpcResp.GetMaxValue(), httpResp.Value)
 	}
-
-	if got := grpcResp.GetTimestamp().AsTime().UTC().Format(constants.TimeFormat); got != httpResp.Timestamp {
-		t.Fatalf("timestamp mismatch: grpc=%s http=%s", got, httpResp.Timestamp)
+	if grpcResp.GetTimestamp().AsTime().UTC().Format(constants.TimeFormat) != httpResp.Timestamp {
+		t.Fatalf("timestamp mismatch")
 	}
 }
 
@@ -158,20 +152,11 @@ func TestGRPCMaxByTimeRangeParity(t *testing.T) {
 		t.Fatalf("expected one HTTP result, got %d", len(httpResp))
 	}
 
-	if result.GetId() != httpResp[0].PacketID {
-		t.Fatalf("packet_id mismatch: grpc=%s http=%s", result.GetId(), httpResp[0].PacketID)
-	}
-
-	if httpResp[0].SourceID != "source" {
-		t.Fatalf("unexpected source id in HTTP response: %s", httpResp[0].SourceID)
-	}
-
-	if result.GetMaxValue() != httpResp[0].Value {
-		t.Fatalf("value mismatch: grpc=%f http=%f", result.GetMaxValue(), httpResp[0].Value)
-	}
-
-	if got := result.GetTimestamp().AsTime().UTC().Format(constants.TimeFormat); got != httpResp[0].Timestamp {
-		t.Fatalf("timestamp mismatch: grpc=%s http=%s", got, httpResp[0].Timestamp)
+	if result.GetId() != httpResp[0].PacketID ||
+		httpResp[0].SourceID != "source" ||
+		result.GetMaxValue() != httpResp[0].Value ||
+		result.GetTimestamp().AsTime().UTC().Format(constants.TimeFormat) != httpResp[0].Timestamp {
+		t.Fatalf("grpc and http responses differ")
 	}
 }
 
@@ -191,7 +176,6 @@ func TestGRPCMaxByTimeRangeInvalidTimestamp(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected validation error")
 	}
-
 	st := status.Convert(err)
 	if st.Code() != codes.InvalidArgument {
 		t.Fatalf("expected InvalidArgument, got %s", st.Code())
@@ -209,7 +193,6 @@ func TestGRPCValidationErrorParity(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected validation error")
 	}
-
 	st := status.Convert(err)
 	if st.Code() != codes.InvalidArgument {
 		t.Fatalf("expected InvalidArgument, got %s", st.Code())
@@ -224,9 +207,8 @@ func TestGRPCValidationErrorParity(t *testing.T) {
 		Error string `json:"error"`
 	}
 	if err := json.Unmarshal(body, &httpErr); err != nil {
-		t.Fatalf("failed to decode HTTP error: %v", err)
+		t.Fatalf("decode error: %v", err)
 	}
-
 	if st.Message() != httpErr.Error {
 		t.Fatalf("error message mismatch: grpc=%s http=%s", st.Message(), httpErr.Error)
 	}
@@ -243,7 +225,6 @@ func TestGRPCNotFoundParity(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected not found error")
 	}
-
 	st := status.Convert(err)
 	if st.Code() != codes.NotFound {
 		t.Fatalf("expected NotFound, got %s", st.Code())
@@ -258,9 +239,8 @@ func TestGRPCNotFoundParity(t *testing.T) {
 		Error string `json:"error"`
 	}
 	if err := json.Unmarshal(body, &httpErr); err != nil {
-		t.Fatalf("failed to decode HTTP error: %v", err)
+		t.Fatalf("decode error: %v", err)
 	}
-
 	if st.Message() != httpErr.Error {
 		t.Fatalf("error message mismatch: grpc=%s http=%s", st.Message(), httpErr.Error)
 	}

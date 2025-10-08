@@ -27,7 +27,6 @@ func GenerateUUID() string {
 	)
 }
 
-// ParseUUID validates the supplied UUID string and returns its lowercase representation.
 func ParseUUID(value string) (string, error) {
 	if len(value) != 36 {
 		return "", fmt.Errorf("%w: length %d", sharederrors.ErrInvalidUUID, len(value))

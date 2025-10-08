@@ -13,6 +13,7 @@ import (
 )
 
 func TestRepositoryBatchFlushBySize(t *testing.T) {
+	t.Log("Шаг 1: создаём репозиторий с маленьким батчем")
 	ctx := context.Background()
 	runner := newStubRunner(200 * time.Millisecond)
 
@@ -30,6 +31,7 @@ func TestRepositoryBatchFlushBySize(t *testing.T) {
 		_ = repo.Close()
 	})
 
+	t.Log("Шаг 2: добавляем записи до заполнения батча")
 	start := time.Now()
 	for i := 0; i < 3; i++ {
 		measurement := domain.PacketMax{
@@ -46,10 +48,12 @@ func TestRepositoryBatchFlushBySize(t *testing.T) {
 		t.Fatalf("expected enqueue to be significantly faster than runner delay, took %s", elapsed)
 	}
 
+	t.Log("Шаг 3: ожидаем, что батч будет сброшен по размеру")
 	waitForRunnerCalls(t, runner, 3, time.Second)
 }
 
 func TestRepositoryBatchFlushByTimeout(t *testing.T) {
+	t.Log("Шаг 1: инициализируем репозиторий с таймаутом батча")
 	ctx := context.Background()
 	const timeout = 120 * time.Millisecond
 	runner := newStubRunner(10 * time.Millisecond)
@@ -68,6 +72,7 @@ func TestRepositoryBatchFlushByTimeout(t *testing.T) {
 		_ = repo.Close()
 	})
 
+	t.Log("Шаг 2: добавляем одну запись и проверяем скорость очереди")
 	enqueueStart := time.Now()
 	measurement := domain.PacketMax{
 		PacketID:  constants.GenerateUUID(),
@@ -82,6 +87,7 @@ func TestRepositoryBatchFlushByTimeout(t *testing.T) {
 		t.Fatalf("expected enqueue to be quick, took %s", elapsed)
 	}
 
+	t.Log("Шаг 3: убеждаемся, что сброс произошёл по таймауту")
 	waitForRunnerCalls(t, runner, 1, time.Second)
 	callTimes := runner.CallTimes()
 	if len(callTimes) == 0 {

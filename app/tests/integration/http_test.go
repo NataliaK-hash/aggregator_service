@@ -46,6 +46,7 @@ func (s *stubService) MaxInRange(_ context.Context, from, to time.Time) ([]domai
 func TestHTTPMaxByID(t *testing.T) {
 	t.Parallel()
 
+	t.Log("Шаг 1: готовим входные данные и HTTP-запрос")
 	id := "123e4567-e89b-12d3-a456-426614174000"
 	timestamp := time.Now().UTC().Truncate(time.Millisecond)
 	service := &stubService{resultByID: domain.AggregatorResult{PacketID: id, SourceID: "source", Value: 42.5, Timestamp: timestamp}}
@@ -53,12 +54,14 @@ func TestHTTPMaxByID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/max?packet_id="+id, nil)
 	recorder := httptest.NewRecorder()
 
+	t.Log("Шаг 2: выполняем обработку запроса")
 	httpapi.NewServer(service, infra.NewLogger(io.Discard, "test-http")).ServeHTTP(recorder, req)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", recorder.Code)
 	}
 
+	t.Log("Шаг 3: проверяем тело ответа и вызовы сервиса")
 	var response struct {
 		PacketID  string  `json:"packet_id"`
 		SourceID  string  `json:"source_id"`
@@ -89,6 +92,7 @@ func TestHTTPMaxByID(t *testing.T) {
 func TestHTTPMaxByRange(t *testing.T) {
 	t.Parallel()
 
+	t.Log("Шаг 1: формируем диапазон дат и запрос")
 	from := time.Now().Add(-time.Hour).UTC().Truncate(time.Millisecond)
 	to := time.Now().UTC().Truncate(time.Millisecond)
 	id := "123e4567-e89b-12d3-a456-426614174000"
@@ -98,12 +102,14 @@ func TestHTTPMaxByRange(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, url, nil)
 	recorder := httptest.NewRecorder()
 
+	t.Log("Шаг 2: вызываем HTTP-сервер и анализируем статус")
 	httpapi.NewServer(service, infra.NewLogger(io.Discard, "test-http")).ServeHTTP(recorder, req)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", recorder.Code)
 	}
 
+	t.Log("Шаг 3: проверяем ответ и зафиксированный диапазон")
 	var response []struct {
 		PacketID  string  `json:"packet_id"`
 		SourceID  string  `json:"source_id"`
@@ -137,9 +143,11 @@ func TestHTTPMaxByRange(t *testing.T) {
 func TestHTTPMaxValidationErrors(t *testing.T) {
 	t.Parallel()
 
+	t.Log("Шаг 1: отправляем запрос с некорректным идентификатором")
 	req := httptest.NewRequest(http.MethodGet, "/max?packet_id=invalid", nil)
 	recorder := httptest.NewRecorder()
 
+	t.Log("Шаг 2: проверяем, что сервер вернул ошибку валидации")
 	httpapi.NewServer(&stubService{}, infra.NewLogger(io.Discard, "test-http")).ServeHTTP(recorder, req)
 
 	if recorder.Code != http.StatusBadRequest {
@@ -150,9 +158,11 @@ func TestHTTPMaxValidationErrors(t *testing.T) {
 func TestHTTPMethodNotAllowed(t *testing.T) {
 	t.Parallel()
 
+	t.Log("Шаг 1: выполняем запрос с неподдерживаемым методом")
 	req := httptest.NewRequest(http.MethodPost, "/max", nil)
 	recorder := httptest.NewRecorder()
 
+	t.Log("Шаг 2: убеждаемся, что сервер отклонил метод")
 	httpapi.NewServer(&stubService{}, infra.NewLogger(io.Discard, "test-http")).ServeHTTP(recorder, req)
 
 	if recorder.Code != http.StatusMethodNotAllowed {

@@ -101,6 +101,12 @@ func (c *Counter) Add(v float64) {
 	c.mu.Unlock()
 }
 
+func (c *Counter) Value() float64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.value
+}
+
 func (c *Counter) descriptor() descriptor {
 	return c.desc
 }
@@ -169,10 +175,8 @@ func (h *Histogram) write(w io.Writer) {
 	fmt.Fprintf(w, "# HELP %s %s\n", h.desc.name, escapeHelp(h.desc.help))
 	fmt.Fprintf(w, "# TYPE %s histogram\n", h.desc.name)
 
-	var cumulative uint64
 	for i, upper := range buckets {
-		cumulative += counts[i]
-		fmt.Fprintf(w, "%s_bucket{le=\"%g\"} %d\n", h.desc.name, upper, cumulative)
+		fmt.Fprintf(w, "%s_bucket{le=\"%g\"} %d\n", h.desc.name, upper, counts[i])
 	}
 	fmt.Fprintf(w, "%s_bucket{le=\"+Inf\"} %d\n", h.desc.name, count)
 	fmt.Fprintf(w, "%s_sum %g\n", h.desc.name, sum)
@@ -201,6 +205,12 @@ func (g *Gauge) Add(delta float64) {
 	g.mu.Unlock()
 }
 
+func (g *Gauge) Value() float64 {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.value
+}
+
 func (g *Gauge) Inc() {
 	g.Add(1)
 }
@@ -224,7 +234,7 @@ func (g *Gauge) write(w io.Writer) {
 }
 
 func escapeHelp(input string) string {
-	replacer := strings.NewReplacer("\\", "\\\\", "\n", "\\n")
+	replacer := strings.NewReplacer("\n", "\\n")
 	return replacer.Replace(input)
 }
 

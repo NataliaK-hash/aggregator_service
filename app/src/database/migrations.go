@@ -14,9 +14,6 @@ import (
 
 const defaultMigrationsDir = "app/resources/db/migrations"
 
-// ResolveMigrationsDir returns the directory containing SQL migrations.
-// It respects the MIGRATIONS_DIR environment variable when present and
-// falls back to the default migrations path bundled with the application.
 func ResolveMigrationsDir() string {
 	if dir := strings.TrimSpace(os.Getenv("MIGRATIONS_DIR")); dir != "" {
 		return dir
@@ -24,9 +21,6 @@ func ResolveMigrationsDir() string {
 	return defaultMigrationsDir
 }
 
-// ApplyMigrations executes the SQL migration files located in the provided
-// directory using the supplied CommandRunner. Migrations are executed in
-// lexical order to preserve dependencies between files.
 func ApplyMigrations(ctx context.Context, runner CommandRunner, dsn, dir string, logger *infra.Logger) error {
 	if strings.TrimSpace(dir) == "" {
 		return errors.New("migrations directory is not specified")

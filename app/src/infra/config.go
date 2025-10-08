@@ -8,7 +8,6 @@ import (
 	"aggregator-service/app/src/infra/utils"
 )
 
-// Config captures runtime settings for the application.
 type Config struct {
 	HTTPPort                string
 	GRPCPort                string
@@ -28,7 +27,6 @@ type Config struct {
 	PacketBufferSize        int
 }
 
-// LoadConfig builds a Config instance from environment variables.
 func LoadConfig() Config {
 	return Config{
 		HTTPPort:                getEnv("HTTP_PORT", "8080"),
@@ -50,7 +48,6 @@ func LoadConfig() Config {
 	}
 }
 
-// LogConfig prints a summary of the resolved configuration values.
 func LogConfig(ctx context.Context, logger *Logger, cfg Config) {
 	logger.Printf(ctx, "HTTP_PORT=%s", cfg.HTTPPort)
 	logger.Printf(ctx, "GRPC_PORT=%s", cfg.GRPCPort)

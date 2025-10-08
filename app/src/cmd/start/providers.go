@@ -53,10 +53,8 @@ func provideRepository(ctx context.Context, cfg infra.Config, logger *infra.Logg
 				logger.Println(ctx, "database connectivity check succeeded")
 			}
 		}
-	} else {
-		if logger != nil {
-			logger.Println(ctx, "database connectivity check skipped (no DSN or host/port configured)")
-		}
+	} else if logger != nil {
+		logger.Println(ctx, "database connectivity check skipped (no DSN or host/port configured)")
 	}
 
 	return dbpostgres.SetupRepository(ctx, cfg, logger)

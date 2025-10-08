@@ -9,10 +9,6 @@ import (
 	"strings"
 )
 
-// Load reads environment variables from the provided .env files.
-// If no paths are supplied it defaults to loading the .env file in the
-// current working directory. Existing environment variables are left
-// untouched, mirroring the behaviour of the popular godotenv package.
 func Load(paths ...string) error {
 	if len(paths) == 0 {
 		paths = []string{".env"}

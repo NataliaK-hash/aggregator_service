@@ -2,7 +2,6 @@ package domain
 
 import "time"
 
-// Measurement represents a single numeric observation produced by a source.
 type Measurement struct {
 	PacketID  string
 	SourceID  string
