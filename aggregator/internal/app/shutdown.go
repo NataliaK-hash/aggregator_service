@@ -51,7 +51,6 @@ func NewShutdownManager(timeout time.Duration, logger *logging.Logger, opts ...S
 	return sm
 }
 
-// WithContext возвращает контекст, который отменяется при завершении родительского контекста или получении сигнала остановки.
 func (sm *ShutdownManager) WithContext(parent context.Context) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(parent)
 

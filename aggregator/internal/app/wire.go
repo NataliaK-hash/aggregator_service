@@ -11,6 +11,7 @@ import (
 	"aggregator/internal/config"
 	"aggregator/internal/generator"
 	"aggregator/internal/logging"
+	"aggregator/internal/storage"
 )
 
 func InitializeApp() (*App, error) {
