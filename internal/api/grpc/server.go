@@ -4,18 +4,18 @@ import (
 	"context"
 	"time"
 
-	"aggregator/internal/application/aggregator"
-	"aggregator/internal/pkg/uuid"
+	"aggregator-service-project/internal/domain"
+	"aggregator-service-project/internal/pkg/uuid"
 )
 
 // Server mimics the behaviour of the gRPC transport layer and is leveraged in tests to
 // ensure parity between transports.
 type Server struct {
-	service aggregator.Service
+	service domain.AggregatorService
 }
 
 // NewServer constructs a new gRPC server facade backed by the application service.
-func NewServer(service aggregator.Service) *Server {
+func NewServer(service domain.AggregatorService) *Server {
 	return &Server{service: service}
 }
 

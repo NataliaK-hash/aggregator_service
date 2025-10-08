@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"aggregator/internal/application/aggregator"
+	"aggregator-service-project/internal/domain"
 )
 
 // Server exposes the HTTP transport for the aggregator application.
@@ -14,7 +14,7 @@ type Server struct {
 }
 
 // NewServer constructs a chi based HTTP server that forwards requests to the application service.
-func NewServer(service aggregator.Service) *Server {
+func NewServer(service domain.AggregatorService) *Server {
 	router := chi.NewRouter()
 	handler := &handler{service: service}
 	registerRoutes(router, handler)

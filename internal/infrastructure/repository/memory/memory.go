@@ -7,8 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"aggregator/internal/application/aggregator"
-	"aggregator/internal/domain"
+	"aggregator-service-project/internal/domain"
 )
 
 // Repository stores measurements in memory and satisfies the application repository contract.
@@ -63,7 +62,7 @@ func (r *Repository) MaxBySource(_ context.Context, id string) (domain.Measureme
 	}
 
 	if maxMeasurement == nil {
-		return domain.Measurement{}, aggregator.ErrNotFound
+		return domain.Measurement{}, domain.ErrNotFound
 	}
 
 	return *maxMeasurement, nil
@@ -75,7 +74,7 @@ func (r *Repository) MaxInRange(_ context.Context, from, to time.Time) (domain.M
 	defer r.mu.RUnlock()
 
 	if from.After(to) {
-		return domain.Measurement{}, aggregator.ErrNotFound
+		return domain.Measurement{}, domain.ErrNotFound
 	}
 
 	filtered := make([]domain.Measurement, 0, len(r.measurements))
@@ -88,7 +87,7 @@ func (r *Repository) MaxInRange(_ context.Context, from, to time.Time) (domain.M
 	}
 
 	if len(filtered) == 0 {
-		return domain.Measurement{}, aggregator.ErrNotFound
+		return domain.Measurement{}, domain.ErrNotFound
 	}
 
 	sort.Slice(filtered, func(i, j int) bool {
@@ -98,4 +97,4 @@ func (r *Repository) MaxInRange(_ context.Context, from, to time.Time) (domain.M
 	return filtered[0], nil
 }
 
-var _ aggregator.Repository = (*Repository)(nil)
+var _ domain.MeasurementRepository = (*Repository)(nil)

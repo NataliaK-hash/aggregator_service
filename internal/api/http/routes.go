@@ -8,8 +8,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"aggregator/internal/application/aggregator"
-	"aggregator/internal/pkg/uuid"
+	"aggregator-service-project/internal/domain"
+	"aggregator-service-project/internal/pkg/uuid"
 )
 
 const (
@@ -20,10 +20,14 @@ const (
 
 // handler contains the HTTP handlers and shared dependencies for the REST API.
 type handler struct {
-	service aggregator.Service
+	service domain.AggregatorService
 }
 
 func registerRoutes(router chi.Router, h *handler) {
+	router.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
 	router.Get("/max", h.handleGetMax)
 }
 
@@ -116,7 +120,7 @@ func (h *handler) handleMaxByRange(w http.ResponseWriter, r *http.Request, fromP
 
 func (h *handler) respondServiceError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, aggregator.ErrNotFound):
+	case errors.Is(err, domain.ErrNotFound):
 		h.writeError(w, http.StatusNotFound, "measurement not found")
 	default:
 		h.writeError(w, http.StatusInternalServerError, "internal server error")

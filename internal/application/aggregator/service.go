@@ -2,52 +2,29 @@ package aggregator
 
 import (
 	"context"
-	"errors"
 	"time"
 
-	"aggregator/internal/domain"
+	"aggregator-service-project/internal/domain"
 )
-
-// ErrNotFound is returned when no measurement exists for the provided filters.
-var ErrNotFound = errors.New("measurement not found")
-
-// Repository describes the data access requirements for the aggregator service.
-type Repository interface {
-	MaxBySource(ctx context.Context, id string) (domain.Measurement, error)
-	MaxInRange(ctx context.Context, from, to time.Time) (domain.Measurement, error)
-}
-
-// Service exposes the use-cases that the transport layers rely on.
-type Service interface {
-	MaxBySource(ctx context.Context, id string) (Result, error)
-	MaxInRange(ctx context.Context, from, to time.Time) (Result, error)
-}
-
-// Result represents the application output returned by the aggregator service.
-type Result struct {
-	SourceID  string
-	Value     float64
-	Timestamp time.Time
-}
 
 // Aggregator orchestrates access to measurement statistics.
 type Aggregator struct {
-	repo Repository
+	repo domain.MeasurementReader
 }
 
 // New creates a new Aggregator service instance.
-func New(repo Repository) *Aggregator {
+func New(repo domain.MeasurementReader) *Aggregator {
 	return &Aggregator{repo: repo}
 }
 
 // MaxBySource returns the maximum measurement for the provided source identifier.
-func (a *Aggregator) MaxBySource(ctx context.Context, id string) (Result, error) {
+func (a *Aggregator) MaxBySource(ctx context.Context, id string) (domain.AggregatorResult, error) {
 	measurement, err := a.repo.MaxBySource(ctx, id)
 	if err != nil {
-		return Result{}, err
+		return domain.AggregatorResult{}, err
 	}
 
-	return Result{
+	return domain.AggregatorResult{
 		SourceID:  id,
 		Value:     measurement.Value,
 		Timestamp: measurement.Timestamp,
@@ -55,17 +32,17 @@ func (a *Aggregator) MaxBySource(ctx context.Context, id string) (Result, error)
 }
 
 // MaxInRange returns the maximum measurement in the provided time interval.
-func (a *Aggregator) MaxInRange(ctx context.Context, from, to time.Time) (Result, error) {
+func (a *Aggregator) MaxInRange(ctx context.Context, from, to time.Time) (domain.AggregatorResult, error) {
 	measurement, err := a.repo.MaxInRange(ctx, from, to)
 	if err != nil {
-		return Result{}, err
+		return domain.AggregatorResult{}, err
 	}
 
-	return Result{
+	return domain.AggregatorResult{
 		SourceID:  measurement.SourceID,
 		Value:     measurement.Value,
 		Timestamp: measurement.Timestamp,
 	}, nil
 }
 
-var _ Service = (*Aggregator)(nil)
+var _ domain.AggregatorService = (*Aggregator)(nil)
